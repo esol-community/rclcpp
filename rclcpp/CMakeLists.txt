@@ -118,10 +118,6 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
   list(APPEND ${PROJECT_NAME}_SRCS
     src/rclcpp/threads/windows_thread.cpp
   )
-else()
-  list(APPEND ${PROJECT_NAME}_SRCS
-    src/rclcpp/threads/std_thread.cpp
-  )
 endif()
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
