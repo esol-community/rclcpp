@@ -18,6 +18,7 @@
 #include <chrono>
 #include <memory>
 #include <mutex>
+#include <vector>
 #include <set>
 #include <thread>
 #include <unordered_map>
@@ -26,6 +27,7 @@
 #include "rclcpp/macros.hpp"
 #include "rclcpp/memory_strategies.hpp"
 #include "rclcpp/visibility_control.hpp"
+#include "rclcpp/threads.hpp"
 
 namespace rclcpp
 {
@@ -79,12 +81,23 @@ protected:
   run(size_t this_thread_number);
 
 private:
+  void run_on_rclcpp_thread(
+    rclcpp::detail::ThreadAttribute & thread_attr,
+    std::vector<rclcpp::Thread> & threads,
+    size_t thread_id);
+
+  void run_on_this_thread(
+    rclcpp::detail::ThreadAttribute & thread_attr,
+    size_t thread_id);
+
   RCLCPP_DISABLE_COPY(MultiThreadedExecutor)
 
   std::mutex wait_mutex_;
   size_t number_of_threads_;
   bool yield_before_execute_;
   std::chrono::nanoseconds next_exec_timeout_;
+  rcl_thread_attrs_t * thread_attributes_;
+  bool use_thread_attrs_;
 };
 
 }  // namespace executors
