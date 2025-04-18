@@ -3,6 +3,45 @@ Changelog for package rclcpp_lifecycle
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
+28.1.8 (2025-04-02)
+-------------------
+* should pull valid transition before trying to change the state. (`#2774 <https://github.com/ros2/rclcpp/issues/2774>`_) (`#2784 <https://github.com/ros2/rclcpp/issues/2784>`_)
+  (cherry picked from commit 7b6ee8a2e7a13d73f9f69368970390a9e0930448)
+  Co-authored-by: Tomoya Fujita <Tomoya.Fujita@sony.com>
+* Contributors: mergify[bot]
+
+28.1.7 (2025-03-26)
+-------------------
+
+28.1.6 (2024-12-18)
+-------------------
+
+28.1.5 (2024-09-19)
+-------------------
+
+28.1.4 (2024-09-06)
+-------------------
+
+28.1.3 (2024-06-27)
+-------------------
+* Revert "call shutdown in LifecycleNode dtor to avoid leaving the device in unknown state (2nd) (backport `#2528 <https://github.com/ros2/rclcpp/issues/2528>`_) (`#2542 <https://github.com/ros2/rclcpp/issues/2542>`_)" (`#2558 <https://github.com/ros2/rclcpp/issues/2558>`_)
+* call shutdown in LifecycleNode dtor to avoid leaving the device in unknown state (2nd) (backport `#2528 <https://github.com/ros2/rclcpp/issues/2528>`_) (`#2542 <https://github.com/ros2/rclcpp/issues/2542>`_)
+  Co-authored-by: Tomoya Fujita <Tomoya.Fujita@sony.com>
+* rclcpp::shutdown should not be called before LifecycleNode dtor. (`#2527 <https://github.com/ros2/rclcpp/issues/2527>`_) (`#2540 <https://github.com/ros2/rclcpp/issues/2540>`_)
+  Co-authored-by: Tomoya Fujita <Tomoya.Fujita@sony.com>
+* Contributors: Tomoya Fujita, mergify[bot]
+
+28.1.2 (2024-05-13)
+-------------------
+* Revert "call shutdown in LifecycleNode dtor to avoid leaving the device in un… (`#2450 <https://github.com/ros2/rclcpp/issues/2450>`_)" (`#2522 <https://github.com/ros2/rclcpp/issues/2522>`_) (`#2524 <https://github.com/ros2/rclcpp/issues/2524>`_)
+  This reverts commit 04ea0bb00293387791522590b7347a2282cda290.
+  (cherry picked from commit 42b0b5775b4e68718c5949308c9e1a059930ded7)
+  Co-authored-by: Chris Lalancette <clalancette@gmail.com>
+* Contributors: mergify[bot]
+
+28.1.1 (2024-04-24)
+-------------------
+
 28.1.0 (2024-04-16)
 -------------------
 * Remove references to index.ros.org. (`#2504 <https://github.com/ros2/rclcpp/issues/2504>`_)

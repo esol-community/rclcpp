@@ -59,6 +59,11 @@ ament_add_gtest(test_clock test_clock.cpp)
 if(TARGET test_clock)
   target_link_libraries(test_clock ${PROJECT_NAME} mimick ${rcl_interfaces_TARGETS} ${test_msgs_TARGETS})
 endif()
+ament_add_gtest(test_clock_conditional test_clock_conditional.cpp)
+ament_add_test_label(test_clock_conditional mimick)
+if(TARGET test_clock_conditional)
+  target_link_libraries(test_clock_conditional ${PROJECT_NAME} mimick ${rcl_interfaces_TARGETS} ${test_msgs_TARGETS})
+endif()
 ament_add_gtest(test_copy_all_parameter_values test_copy_all_parameter_values.cpp)
 if(TARGET test_copy_all_parameter_values)
   target_link_libraries(test_copy_all_parameter_values ${PROJECT_NAME})
@@ -462,8 +467,12 @@ endif()
 ament_add_gtest(
   test_executors
   executors/test_executors.cpp
+  executors/test_waitable.cpp
   APPEND_LIBRARY_DIRS "${append_library_dirs}"
   TIMEOUT 180)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug" AND MSVC)
+  target_compile_options(test_executors PRIVATE "/bigobj")
+endif()
 if(TARGET test_executors)
   target_link_libraries(test_executors ${PROJECT_NAME} rcl::rcl ${test_msgs_TARGETS})
 endif()
@@ -493,6 +502,26 @@ ament_add_gtest(
   TIMEOUT 180)
 if(TARGET test_executors)
   target_link_libraries(test_executors_intraprocess ${PROJECT_NAME} ${test_msgs_TARGETS})
+endif()
+
+ament_add_gtest(
+  test_executors_busy_waiting
+  executors/test_executors_busy_waiting.cpp
+  executors/test_waitable.cpp
+  APPEND_LIBRARY_DIRS "${append_library_dirs}"
+  TIMEOUT 180)
+if(TARGET test_executors_busy_waiting)
+  target_link_libraries(test_executors_busy_waiting ${PROJECT_NAME})
+endif()
+
+ament_add_gtest(
+  test_executors_warmup
+  executors/test_executors_warmup.cpp
+  executors/test_waitable.cpp
+  APPEND_LIBRARY_DIRS "${append_library_dirs}"
+  TIMEOUT 180)
+if(TARGET test_executors_warmup)
+  target_link_libraries(test_executors_warmup ${PROJECT_NAME} ${test_msgs_TARGETS})
 endif()
 
 ament_add_gtest(test_static_single_threaded_executor executors/test_static_single_threaded_executor.cpp
@@ -598,7 +627,7 @@ ament_add_gtest(test_executor test_executor.cpp
   APPEND_LIBRARY_DIRS "${append_library_dirs}"
   TIMEOUT 120)
 if(TARGET test_executor)
-  target_link_libraries(test_executor ${PROJECT_NAME} mimick)
+  target_link_libraries(test_executor ${PROJECT_NAME} mimick ${test_msgs_TARGETS})
 endif()
 
 ament_add_gtest(test_graph_listener test_graph_listener.cpp)

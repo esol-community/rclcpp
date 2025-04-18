@@ -84,7 +84,9 @@ Executor::Executor(const rclcpp::ExecutorOptions & options)
   notify_waitable_->add_guard_condition(interrupt_guard_condition_);
   notify_waitable_->add_guard_condition(shutdown_guard_condition_);
 
-  wait_set_.add_waitable(notify_waitable_);
+  // we need to initially rebuild the collection,
+  // so that the notify_waitable_ is added
+  collect_entities();
 }
 
 Executor::~Executor()
@@ -275,7 +277,7 @@ Executor::spin_until_future_complete_impl(
   if (spinning.exchange(true)) {
     throw std::runtime_error("spin_until_future_complete() called while already spinning");
   }
-  RCPPUTILS_SCOPE_EXIT(this->spinning.store(false); );
+  RCPPUTILS_SCOPE_EXIT(wait_result_.reset();this->spinning.store(false););
   while (rclcpp::ok(this->context_) && spinning.load()) {
     // Do one item of work.
     spin_once_impl(timeout_left);
@@ -364,26 +366,69 @@ Executor::spin_some_impl(std::chrono::nanoseconds max_duration, bool exhaustive)
   if (spinning.exchange(true)) {
     throw std::runtime_error("spin_some() called while already spinning");
   }
-  RCPPUTILS_SCOPE_EXIT(this->spinning.store(false); );
+  RCPPUTILS_SCOPE_EXIT(wait_result_.reset();this->spinning.store(false););
 
+  // clear the wait result and wait for work without blocking to collect the work
+  // for the first time
+  // both spin_some and spin_all wait for work at the beginning
+  wait_result_.reset();
+  wait_for_work(std::chrono::milliseconds(0));
+  bool entity_states_fully_polled = true;
+
+  if (entities_need_rebuild_) {
+    // if the last wait triggered a collection rebuild, we need to call
+    // wait_for_work once more, in order to do a collection rebuild and collect
+    // events from the just added entities
+    entity_states_fully_polled = false;
+  }
+
+  // The logic of this while loop is as follows:
+  //
+  // - while not shutdown, and spinning (not canceled), and not max duration reached...
+  // - try to get an executable item to execute, and execute it if available
+  // - otherwise, reset the wait result, and ...
+  // - if there was no work available just after waiting, break the loop unconditionally
+  //   - this is appropriate for both spin_some and spin_all which use this function
+  // - else if exhaustive = true, then wait for work again
+  //   - this is only used for spin_all and not spin_some
+  // - else break
+  //   - this only occurs with spin_some
+  //
+  // The logic of this loop is subtle and should be carefully changed if at all.
+  // See also:
+  //   https://github.com/ros2/rclcpp/issues/2508
+  //   https://github.com/ros2/rclcpp/pull/2517
   while (rclcpp::ok(context_) && spinning.load() && max_duration_not_elapsed()) {
-    if (!wait_result_.has_value()) {
-      wait_for_work(std::chrono::milliseconds(0));
-    }
-
     AnyExecutable any_exec;
     if (get_next_ready_executable(any_exec)) {
       execute_any_executable(any_exec);
+      // during the execution some entity might got ready therefore we need
+      // to repoll the states of all entities
+      entity_states_fully_polled = false;
     } else {
-      // If nothing is ready, reset the result to signal we are
-      // ready to wait again
+      // if nothing is ready, reset the result to clear it
       wait_result_.reset();
-    }
 
-    if (!wait_result_.has_value() && !exhaustive) {
-      // In the case of spin some, then we can exit
-      // In the case of spin all, then we will allow ourselves to wait again.
-      break;
+      if (entity_states_fully_polled) {
+        // there was no work after just waiting, always exit in this case
+        // before the exhaustive condition can be checked
+        break;
+      }
+
+      if (exhaustive) {
+        // if exhaustive, wait for work again
+        // this only happens for spin_all; spin_some only waits at the start
+        wait_for_work(std::chrono::milliseconds(0));
+        entity_states_fully_polled = true;
+        if (entities_need_rebuild_) {
+          // if the last wait triggered a collection rebuild, we need to call
+          // wait_for_work once more, in order to do a collection rebuild and
+          // collect events from the just added entities
+          entity_states_fully_polled = false;
+        }
+      } else {
+        break;
+      }
     }
   }
 }
@@ -403,7 +448,7 @@ Executor::spin_once(std::chrono::nanoseconds timeout)
   if (spinning.exchange(true)) {
     throw std::runtime_error("spin_once() called while already spinning");
   }
-  RCPPUTILS_SCOPE_EXIT(this->spinning.store(false); );
+  RCPPUTILS_SCOPE_EXIT(wait_result_.reset();this->spinning.store(false););
   spin_once_impl(timeout);
 }
 
@@ -701,13 +746,33 @@ Executor::wait_for_work(std::chrono::nanoseconds timeout)
   // Clear any previous wait result
   this->wait_result_.reset();
 
+  // we need to make sure that callback groups don't get out of scope
+  // during the wait. As in jazzy, they are not covered by the DynamicStorage,
+  // we explicitly hold them here as a bugfix
+  std::vector<rclcpp::CallbackGroup::SharedPtr> cbgs;
+
   {
     std::lock_guard<std::mutex> guard(mutex_);
+
     if (this->entities_need_rebuild_.exchange(false) || current_collection_.empty()) {
       this->collect_entities();
     }
+
+    auto callback_groups = this->collector_.get_all_callback_groups();
+    cbgs.resize(callback_groups.size());
+    for(const auto & w_ptr : callback_groups) {
+      auto shr_ptr = w_ptr.lock();
+      if(shr_ptr) {
+        cbgs.push_back(std::move(shr_ptr));
+      }
+    }
   }
+
   this->wait_result_.emplace(wait_set_.wait(timeout));
+
+  // drop references to the callback groups, before trying to execute anything
+  cbgs.clear();
+
   if (!this->wait_result_ || this->wait_result_->kind() == WaitResultKind::Empty) {
     RCUTILS_LOG_WARN_NAMED(
       "rclcpp",

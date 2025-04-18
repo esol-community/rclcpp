@@ -39,8 +39,10 @@
 #include "rclcpp/time_source.hpp"
 
 #include "test_msgs/msg/empty.hpp"
+#include "test_msgs/srv/empty.hpp"
 
 #include "./executor_types.hpp"
+#include "./test_waitable.hpp"
 
 using namespace std::chrono_literals;
 
@@ -331,106 +333,6 @@ TYPED_TEST(TestExecutors, testSpinUntilFutureCompleteWithTimeout)
   spinner.join();
 }
 
-class TestWaitable : public rclcpp::Waitable
-{
-public:
-  TestWaitable() = default;
-
-  void
-  add_to_wait_set(rcl_wait_set_t & wait_set) override
-  {
-    if (trigger_count_ > 0) {
-      // Keep the gc triggered until the trigger count is reduced back to zero.
-      // This is necessary if trigger() results in the wait set waking, but not
-      // executing this waitable, in which case it needs to be re-triggered.
-      gc_.trigger();
-    }
-    rclcpp::detail::add_guard_condition_to_rcl_wait_set(wait_set, gc_);
-  }
-
-  void trigger()
-  {
-    trigger_count_++;
-    gc_.trigger();
-  }
-
-  bool
-  is_ready(const rcl_wait_set_t & wait_set) override
-  {
-    for (size_t i = 0; i < wait_set.size_of_guard_conditions; ++i) {
-      auto rcl_guard_condition = wait_set.guard_conditions[i];
-      if (&gc_.get_rcl_guard_condition() == rcl_guard_condition) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  std::shared_ptr<void>
-  take_data() override
-  {
-    return nullptr;
-  }
-
-  std::shared_ptr<void>
-  take_data_by_entity_id(size_t id) override
-  {
-    (void) id;
-    return nullptr;
-  }
-
-  void
-  execute(const std::shared_ptr<void> &) override
-  {
-    trigger_count_--;
-    count_++;
-    if (nullptr != on_execute_callback_) {
-      on_execute_callback_();
-    } else {
-      // TODO(wjwwood): I don't know why this was here, but probably it should
-      //   not be there, or test cases where that is important should use the
-      //   on_execute_callback?
-      std::this_thread::sleep_for(3ms);
-    }
-  }
-
-  void
-  set_on_execute_callback(std::function<void()> on_execute_callback)
-  {
-    on_execute_callback_ = on_execute_callback;
-  }
-
-  void
-  set_on_ready_callback(std::function<void(size_t, int)> callback) override
-  {
-    auto gc_callback = [callback](size_t count) {
-        callback(count, 0);
-      };
-    gc_.set_on_trigger_callback(gc_callback);
-  }
-
-  void
-  clear_on_ready_callback() override
-  {
-    gc_.set_on_trigger_callback(nullptr);
-  }
-
-  size_t
-  get_number_of_ready_guard_conditions() override {return 1;}
-
-  size_t
-  get_count() const
-  {
-    return count_;
-  }
-
-private:
-  std::atomic<size_t> trigger_count_ = 0;
-  std::atomic<size_t> count_ = 0;
-  rclcpp::GuardCondition gc_;
-  std::function<void()> on_execute_callback_ = nullptr;
-};
-
 TYPED_TEST(TestExecutors, spinAll)
 {
   using ExecutorType = TypeParam;
@@ -486,7 +388,7 @@ to_nanoseconds_helper(DurationT duration)
 //   - works nominally (it can execute entities)
 //   - it can execute multiple items at once
 //   - it does not wait for work to be available before returning
-TYPED_TEST(TestExecutors, spin_some)
+TYPED_TEST(TestExecutors, spinSome)
 {
   using ExecutorType = TypeParam;
 
@@ -578,7 +480,7 @@ TYPED_TEST(TestExecutors, spin_some)
 
 // The purpose of this test is to check that the ExecutorT.spin_some() method:
 //   - does not continue executing after max_duration has elapsed
-TYPED_TEST(TestExecutors, spin_some_max_duration)
+TYPED_TEST(TestExecutors, spinSomeMaxDuration)
 {
   using ExecutorType = TypeParam;
 
@@ -745,13 +647,6 @@ TYPED_TEST(TestExecutors, testSpinUntilFutureCompleteInterrupted)
 TYPED_TEST(TestExecutors, testRaceConditionAddNode)
 {
   using ExecutorType = TypeParam;
-  // rmw_connextdds doesn't support events-executor
-  if (
-    std::is_same<ExecutorType, rclcpp::experimental::executors::EventsExecutor>() &&
-    std::string(rmw_get_implementation_identifier()).find("rmw_connextdds") == 0)
-  {
-    GTEST_SKIP();
-  }
 
   // Spawn some threads to do some heavy work
   std::atomic<bool> should_cancel = false;
@@ -868,4 +763,334 @@ TEST(TestExecutors, testSpinWithNonDefaultContext)
   }
 
   rclcpp::shutdown(non_default_context);
+}
+
+TYPED_TEST(TestExecutors, releaseOwnershipEntityAfterSpinningCancel)
+{
+  using ExecutorType = TypeParam;
+  ExecutorType executor;
+
+  auto future = std::async(std::launch::async, [&executor] {executor.spin();});
+
+  auto node = std::make_shared<rclcpp::Node>("test_node");
+  auto callback = [](
+    const test_msgs::srv::Empty::Request::SharedPtr, test_msgs::srv::Empty::Response::SharedPtr) {
+    };
+  auto server = node->create_service<test_msgs::srv::Empty>("test_service", callback);
+  while (!executor.is_spinning()) {
+    std::this_thread::sleep_for(50ms);
+  }
+  executor.add_node(node);
+  std::this_thread::sleep_for(50ms);
+  executor.cancel();
+  std::future_status future_status = future.wait_for(1s);
+  EXPECT_EQ(future_status, std::future_status::ready);
+
+  EXPECT_EQ(server.use_count(), 1);
+}
+
+TYPED_TEST(TestExecutors, testRaceDropCallbackGroupFromSecondThread)
+{
+  using ExecutorType = TypeParam;
+
+  // Create an executor
+  ExecutorType executor;
+  executor.add_node(this->node);
+
+  // Start spinning
+  auto executor_thread = std::thread(
+    [&executor]() {
+      executor.spin();
+    });
+
+  // As the problem is a race, we do this multiple times,
+  // to raise our chances of hitting the problem
+  for (size_t i = 0; i < 10; i++) {
+    auto cg = this->node->create_callback_group(
+      rclcpp::CallbackGroupType::MutuallyExclusive);
+    auto timer = this->node->create_timer(1s, [] {}, cg);
+    // sleep a bit, so that the spin thread can pick up the callback group
+    // and add it to the executor
+    std::this_thread::sleep_for(5ms);
+
+    // At this point the callbackgroup should be used within the waitset of the executor
+    // as we leave the scope, the reference to cg will be dropped.
+    // If the executor has a race, we will experience a segfault at this point.
+  }
+
+  executor.cancel();
+  executor_thread.join();
+}
+
+TYPED_TEST(TestExecutors, dropSomeTimer)
+{
+  using ExecutorType = TypeParam;
+  ExecutorType executor;
+
+  auto node = std::make_shared<rclcpp::Node>("test_node");
+
+  bool timer1_works = false;
+  bool timer2_works = false;
+
+  auto timer1 = node->create_timer(std::chrono::milliseconds(10), [&timer1_works]() {
+        timer1_works = true;
+  });
+  auto timer2 = node->create_timer(std::chrono::milliseconds(10), [&timer2_works]() {
+        timer2_works = true;
+  });
+
+  executor.add_node(node);
+
+  // first let's make sure that both timers work
+  auto max_end_time = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
+  while(!timer1_works || !timer2_works) {
+    // let the executor pick up the node and the timers
+    executor.spin_all(std::chrono::milliseconds(10));
+
+    const auto cur_time = std::chrono::steady_clock::now();
+    ASSERT_LT(cur_time, max_end_time);
+  }
+
+  // delete timer 2. Note, the executor uses an unordered map internally, to order
+  // the entities added to the rcl waitset therefore the order is kind of undefined,
+  // and this test may be flaky. In case it triggers, something is most likely
+  // really broken.
+  timer2.reset();
+
+  timer1_works = false;
+  timer2_works = false;
+  max_end_time = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
+  while(!timer1_works && !timer2_works) {
+    // let the executor pick up the node and the timers
+    executor.spin_all(std::chrono::milliseconds(10));
+
+    const auto cur_time = std::chrono::steady_clock::now();
+    ASSERT_LT(cur_time, max_end_time);
+  }
+
+  ASSERT_TRUE(timer1_works || timer2_works);
+}
+
+TYPED_TEST(TestExecutors, dropSomeNodeWithTimer)
+{
+  using ExecutorType = TypeParam;
+  ExecutorType executor;
+
+  auto node1 = std::make_shared<rclcpp::Node>("test_node_1");
+  auto node2 = std::make_shared<rclcpp::Node>("test_node_2");
+
+  bool timer1_works = false;
+  bool timer2_works = false;
+
+  auto timer1 = node1->create_timer(std::chrono::milliseconds(10), [&timer1_works]() {
+        timer1_works = true;
+  });
+  auto timer2 = node2->create_timer(std::chrono::milliseconds(10), [&timer2_works]() {
+        timer2_works = true;
+  });
+
+  executor.add_node(node1);
+  executor.add_node(node2);
+
+  // first let's make sure that both timers work
+  auto max_end_time = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
+  while(!timer1_works || !timer2_works) {
+    // let the executor pick up the node and the timers
+    executor.spin_all(std::chrono::milliseconds(10));
+
+    const auto cur_time = std::chrono::steady_clock::now();
+    ASSERT_LT(cur_time, max_end_time);
+  }
+
+  // delete node 1.
+  node1 = nullptr;
+
+  timer2_works = false;
+  max_end_time = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
+  while(!timer2_works) {
+    // let the executor pick up the node and the timer
+    executor.spin_all(std::chrono::milliseconds(10));
+
+    const auto cur_time = std::chrono::steady_clock::now();
+    ASSERT_LT(cur_time, max_end_time);
+  }
+
+  ASSERT_TRUE(timer2_works);
+}
+
+TYPED_TEST(TestExecutors, dropSomeSubscription)
+{
+  using ExecutorType = TypeParam;
+  ExecutorType executor;
+
+  auto node = std::make_shared<rclcpp::Node>("test_node");
+
+  bool sub1_works = false;
+  bool sub2_works = false;
+
+  auto sub1 = node->create_subscription<test_msgs::msg::Empty>("/test_drop", 10,
+      [&sub1_works](const test_msgs::msg::Empty &) {
+        sub1_works = true;
+  });
+  auto sub2 = node->create_subscription<test_msgs::msg::Empty>("/test_drop", 10,
+      [&sub2_works](const test_msgs::msg::Empty &) {
+        sub2_works = true;
+  });
+
+  auto pub = node->create_publisher<test_msgs::msg::Empty>("/test_drop", 10);
+
+  executor.add_node(node);
+
+  // first let's make sure that both timers work
+  auto max_end_time = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
+  while(!sub1_works || !sub2_works) {
+    pub->publish(test_msgs::msg::Empty());
+
+    // let the executor pick up the node and the timers
+    executor.spin_all(std::chrono::milliseconds(10));
+
+    const auto cur_time = std::chrono::steady_clock::now();
+    ASSERT_LT(cur_time, max_end_time);
+  }
+
+  // delete subscription 2. Note, the executor uses an unordered map internally, to order
+  // the entities added to the rcl waitset therefore the order is kind of undefined,
+  // and this test may be flaky. In case it triggers, something is most likely
+  // really broken.
+  sub2.reset();
+
+  sub1_works = false;
+  sub2_works = false;
+  max_end_time = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
+  while(!sub1_works && !sub2_works) {
+    pub->publish(test_msgs::msg::Empty());
+
+    // let the executor pick up the node and the timers
+    executor.spin_all(std::chrono::milliseconds(10));
+
+    const auto cur_time = std::chrono::steady_clock::now();
+    ASSERT_LT(cur_time, max_end_time);
+  }
+
+  ASSERT_TRUE(sub1_works || sub2_works);
+}
+
+TYPED_TEST(TestExecutors, dropSomeNodesWithSubscription)
+{
+  using ExecutorType = TypeParam;
+  ExecutorType executor;
+
+  auto node = std::make_shared<rclcpp::Node>("test_node");
+  auto node1 = std::make_shared<rclcpp::Node>("test_node_1");
+  auto node2 = std::make_shared<rclcpp::Node>("test_node_2");
+
+  bool sub1_works = false;
+  bool sub2_works = false;
+
+  auto sub1 = node1->create_subscription<test_msgs::msg::Empty>("/test_drop", 10,
+      [&sub1_works](const test_msgs::msg::Empty &) {
+        sub1_works = true;
+  });
+  auto sub2 = node2->create_subscription<test_msgs::msg::Empty>("/test_drop", 10,
+      [&sub2_works](const test_msgs::msg::Empty &) {
+        sub2_works = true;
+  });
+
+  auto pub = node->create_publisher<test_msgs::msg::Empty>("/test_drop", 10);
+
+  executor.add_node(node);
+  executor.add_node(node1);
+  executor.add_node(node2);
+
+  // first let's make sure that both subscribers work
+  auto max_end_time = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
+  while(!sub1_works || !sub2_works) {
+    pub->publish(test_msgs::msg::Empty());
+
+    // let the executor pick up the node and the timers
+    executor.spin_all(std::chrono::milliseconds(10));
+
+    const auto cur_time = std::chrono::steady_clock::now();
+    ASSERT_LT(cur_time, max_end_time);
+  }
+
+  // delete node 2.
+  node2 = nullptr;
+
+  sub1_works = false;
+  max_end_time = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
+  while(!sub1_works) {
+    pub->publish(test_msgs::msg::Empty());
+
+    // let the executor pick up the node and the timers
+    executor.spin_all(std::chrono::milliseconds(10));
+
+    const auto cur_time = std::chrono::steady_clock::now();
+    ASSERT_LT(cur_time, max_end_time);
+  }
+
+  ASSERT_TRUE(sub1_works);
+}
+
+TYPED_TEST(TestExecutors, dropSubscriptionDuringCallback)
+{
+  using ExecutorType = TypeParam;
+  ExecutorType executor;
+
+
+  auto node = std::make_shared<rclcpp::Node>("test_node");
+
+  bool sub1_works = false;
+  bool sub2_works = false;
+
+  auto cbg = node->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive, true);
+  rclcpp::SubscriptionOptions sub_ops;
+  sub_ops.callback_group = cbg;
+
+  rclcpp::SubscriptionBase::SharedPtr sub1;
+  rclcpp::SubscriptionBase::SharedPtr sub2;
+
+  // Note, the executor uses an unordered map internally, to order
+  // the entities added to the rcl waitset therefore the order of the subscriptions
+  // is kind of undefined. Therefore each sub deletes the other one.
+  sub1 = node->create_subscription<test_msgs::msg::Empty>("/test_drop", 10,
+      [&sub1_works, &sub2](const test_msgs::msg::Empty &) {
+        sub1_works = true;
+        // delete the other subscriber
+        sub2.reset();
+  }, sub_ops);
+  sub2 = node->create_subscription<test_msgs::msg::Empty>("/test_drop", 10,
+      [&sub2_works, &sub1](const test_msgs::msg::Empty &) {
+        sub2_works = true;
+        // delete the other subscriber
+        sub1.reset();
+  }, sub_ops);
+
+  auto pub = node->create_publisher<test_msgs::msg::Empty>("/test_drop", 10);
+
+  // wait for both subs to be connected
+  auto max_end_time = std::chrono::steady_clock::now() + std::chrono::milliseconds(1500);
+  while ((sub1->get_publisher_count() == 0) || (sub2->get_publisher_count() == 0)) {
+    const auto cur_time = std::chrono::steady_clock::now();
+    ASSERT_LT(cur_time, max_end_time);
+  }
+
+  executor.add_node(node);
+
+  // publish some messages, until one subscriber fired. As both subscribers are
+  // connected to the same topic, they should fire in the same wait.
+  max_end_time = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
+  while (!sub1_works && !sub2_works) {
+    pub->publish(test_msgs::msg::Empty());
+
+    // let the executor pick up the node and the timers
+    executor.spin_all(std::chrono::milliseconds(10));
+
+    const auto cur_time = std::chrono::steady_clock::now();
+    ASSERT_LT(cur_time, max_end_time);
+  }
+
+  // only one subscriber must have worked, as the other
+  // one was deleted during the callback
+  ASSERT_TRUE(!sub1_works || !sub2_works);
 }
