@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <chrono>
 #include <memory>
 #include <string>
@@ -25,6 +25,7 @@
 #include "rclcpp/loaned_message.hpp"
 #include "rclcpp/rclcpp.hpp"
 
+#include "rclcpp/msg/large_message.hpp"
 #include "rclcpp/msg/string.hpp"
 
 
@@ -105,6 +106,32 @@ struct TypeAdapter<int, rclcpp::msg::String>
   }
 };
 
+template<>
+struct TypeAdapter<std::string, rclcpp::msg::LargeMessage>
+{
+  using is_specialized = std::true_type;
+  using custom_type = std::string;
+  using ros_message_type = rclcpp::msg::LargeMessage;
+
+  static void
+  convert_to_ros_message(
+    const custom_type & source,
+    ros_message_type & destination)
+  {
+    destination.size = source.size();
+    std::memcpy(destination.data.data(), source.data(), source.size());
+  }
+
+  static void
+  convert_to_custom(
+    const ros_message_type & source,
+    custom_type & destination)
+  {
+    destination.resize(source.size);
+    std::memcpy(destination.data(), source.data.data(), source.size);
+  }
+};
+
 }  // namespace rclcpp
 
 /*
@@ -152,33 +179,54 @@ TEST_F(TestPublisher, conversion_exception_is_passed_up) {
   }
 }
 
+using UseTakeSharedMethod = bool;
+class TestPublisherFixture
+  : public TestPublisher,
+  public ::testing::WithParamInterface<UseTakeSharedMethod>
+{
+};
+
 /*
  * Testing that publisher sends type adapted types and ROS message types with intra proccess communications.
  */
-TEST_F(
-  TestPublisher,
+TEST_P(
+  TestPublisherFixture,
   check_type_adapted_message_is_sent_and_received_intra_process) {
   using StringTypeAdapter = rclcpp::TypeAdapter<std::string, rclcpp::msg::String>;
   const std::string message_data = "Message Data";
   const std::string topic_name = "topic_name";
   bool is_received;
 
-  auto callback =
-    [message_data, &is_received](
-    const rclcpp::msg::String::ConstSharedPtr msg,
-    const rclcpp::MessageInfo & message_info
-    ) -> void
-    {
-      is_received = true;
-      ASSERT_STREQ(message_data.c_str(), msg->data.c_str());
-      ASSERT_TRUE(message_info.get_rmw_message_info().from_intra_process);
-    };
-
   auto node = rclcpp::Node::make_shared(
     "test_intra_process",
     rclcpp::NodeOptions().use_intra_process_comms(true));
   auto pub = node->create_publisher<StringTypeAdapter>(topic_name, 10);
-  auto sub = node->create_subscription<rclcpp::msg::String>(topic_name, 1, callback);
+  rclcpp::Subscription<rclcpp::msg::String>::SharedPtr sub;
+  if (GetParam()) {
+    auto callback =
+      [message_data, &is_received](
+      const rclcpp::msg::String::ConstSharedPtr msg,
+      const rclcpp::MessageInfo & message_info
+      ) -> void
+      {
+        is_received = true;
+        ASSERT_STREQ(message_data.c_str(), msg->data.c_str());
+        ASSERT_TRUE(message_info.get_rmw_message_info().from_intra_process);
+      };
+    sub = node->create_subscription<rclcpp::msg::String>(topic_name, 1, callback);
+  } else {
+    auto callback_unique =
+      [message_data, &is_received](
+      rclcpp::msg::String::UniquePtr msg,
+      const rclcpp::MessageInfo & message_info
+      ) -> void
+      {
+        is_received = true;
+        ASSERT_STREQ(message_data.c_str(), msg->data.c_str());
+        ASSERT_TRUE(message_info.get_rmw_message_info().from_intra_process);
+      };
+    sub = node->create_subscription<rclcpp::msg::String>(topic_name, 1, callback_unique);
+  }
 
   auto wait_for_message_to_be_received = [&is_received, &node]() {
       rclcpp::executors::SingleThreadedExecutor executor;
@@ -238,6 +286,14 @@ TEST_F(
     */
   }
 }
+
+INSTANTIATE_TEST_SUITE_P(
+  TestPublisherFixtureWithParam,
+  TestPublisherFixture,
+  ::testing::Values(
+    true,   // use take shared method
+    false   // not use take shared method
+));
 
 /*
  * Testing that publisher sends type adapted types and ROS message types with inter proccess communications.
@@ -306,4 +362,42 @@ TEST_F(TestPublisher, check_type_adapted_message_is_sent_and_received) {
     rclcpp::PublisherOptionsWithAllocator<std::allocator<void>> options;
     assert_message_was_received();
   }
+}
+
+TEST_F(TestPublisher, test_large_message_unique)
+{
+  // There have been some bugs in the past when trying to type-adapt large messages
+  // (larger than the stack size).  Here we just make sure that a 10MB message works,
+  // which is larger than the default stack size on Linux.
+
+  using StringTypeAdapter = rclcpp::TypeAdapter<std::string, rclcpp::msg::LargeMessage>;
+
+  auto node = std::make_shared<rclcpp::Node>("my_node", "/ns", rclcpp::NodeOptions());
+
+  const std::string topic_name = "topic_name";
+
+  auto pub = node->create_publisher<StringTypeAdapter>(topic_name, 1);
+
+  static constexpr size_t length = 10 * 1024 * 1024;
+  auto message_data = std::make_unique<std::string>(length, '#');
+  pub->publish(std::move(message_data));
+}
+
+TEST_F(TestPublisher, test_large_message_constref)
+{
+  // There have been some bugs in the past when trying to type-adapt large messages
+  // (larger than the stack size).  Here we just make sure that a 10MB message works,
+  // which is larger than the default stack size on Linux.
+
+  using StringTypeAdapter = rclcpp::TypeAdapter<std::string, rclcpp::msg::LargeMessage>;
+
+  auto node = std::make_shared<rclcpp::Node>("my_node", "/ns", rclcpp::NodeOptions());
+
+  const std::string topic_name = "topic_name";
+
+  auto pub = node->create_publisher<StringTypeAdapter>(topic_name, 1);
+
+  static constexpr size_t length = 10 * 1024 * 1024;
+  std::string message_data(length, '#');
+  pub->publish(message_data);
 }

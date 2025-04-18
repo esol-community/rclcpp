@@ -43,6 +43,7 @@
 #include "rclcpp/node_interfaces/node_time_source.hpp"
 #include "rclcpp/node_interfaces/node_timers.hpp"
 #include "rclcpp/node_interfaces/node_topics.hpp"
+#include "rclcpp/node_interfaces/node_type_descriptions.hpp"
 #include "rclcpp/node_interfaces/node_waitables.hpp"
 #include "rclcpp/parameter_service.hpp"
 #include "rclcpp/qos.hpp"
@@ -113,9 +114,15 @@ LifecycleNode::LifecycleNode(
       options.clock_qos(),
       options.use_clock_thread()
     )),
+  node_type_descriptions_(new rclcpp::node_interfaces::NodeTypeDescriptions(
+      node_base_,
+      node_logging_,
+      node_parameters_,
+      node_services_
+    )),
   node_waitables_(new rclcpp::node_interfaces::NodeWaitables(node_base_.get())),
   node_options_(options),
-  impl_(new LifecycleNodeInterfaceImpl(node_base_, node_services_))
+  impl_(new LifecycleNodeInterfaceImpl(node_base_, node_services_, node_logging_))
 {
   impl_->init(enable_communication_interface);
 
@@ -137,10 +144,30 @@ LifecycleNode::LifecycleNode(
       &LifecycleNodeInterface::on_deactivate, this,
       std::placeholders::_1));
   register_on_error(std::bind(&LifecycleNodeInterface::on_error, this, std::placeholders::_1));
+
+  if (options.enable_logger_service()) {
+    node_logging_->create_logger_services(node_services_);
+  }
 }
 
 LifecycleNode::~LifecycleNode()
 {
+  // shutdown if necessary to avoid leaving the device in unknown state
+  if (LifecycleNode::get_current_state().id() !=
+    lifecycle_msgs::msg::State::PRIMARY_STATE_FINALIZED)
+  {
+    auto ret = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR;
+    auto finalized = LifecycleNode::shutdown(ret);
+    if (finalized.id() != lifecycle_msgs::msg::State::PRIMARY_STATE_FINALIZED ||
+      ret != rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS)
+    {
+      RCLCPP_WARN(
+        rclcpp::get_logger("rclcpp_lifecycle"),
+        "Shutdown error in destruction of LifecycleNode: final state(%s)",
+        finalized.label().c_str());
+    }
+  }
+
   // release sub-interfaces in an order that allows them to consult with node_base during tear-down
   node_waitables_.reset();
   node_time_source_.reset();
@@ -375,6 +402,18 @@ LifecycleNode::count_subscribers(const std::string & topic_name) const
   return node_graph_->count_subscribers(topic_name);
 }
 
+size_t
+LifecycleNode::count_clients(const std::string & service_name) const
+{
+  return node_graph_->count_clients(service_name);
+}
+
+size_t
+LifecycleNode::count_services(const std::string & service_name) const
+{
+  return node_graph_->count_services(service_name);
+}
+
 std::vector<rclcpp::TopicEndpointInfo>
 LifecycleNode::get_publishers_info_by_topic(const std::string & topic_name, bool no_mangle) const
 {
@@ -466,6 +505,12 @@ rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr
 LifecycleNode::get_node_topics_interface()
 {
   return node_topics_;
+}
+
+rclcpp::node_interfaces::NodeTypeDescriptionsInterface::SharedPtr
+LifecycleNode::get_node_type_descriptions_interface()
+{
+  return node_type_descriptions_;
 }
 
 rclcpp::node_interfaces::NodeServicesInterface::SharedPtr

@@ -117,12 +117,12 @@ public:
   /// Add the Waitable to a wait set.
   RCLCPP_PUBLIC
   void
-  add_to_wait_set(rcl_wait_set_t * wait_set) override;
+  add_to_wait_set(rcl_wait_set_t & wait_set) override;
 
   /// Check if the Waitable is ready.
   RCLCPP_PUBLIC
   bool
-  is_ready(rcl_wait_set_t * wait_set) override;
+  is_ready(const rcl_wait_set_t & wait_set) override;
 
   /// Set a callback to be called when each new event instance occurs.
   /**
@@ -260,6 +260,16 @@ public:
     }
   }
 
+  ~EventHandler()
+  {
+    // Since the rmw event listener holds a reference to the
+    // "on ready" callback, we need to clear it on destruction of this class.
+    // This clearing is not needed for other rclcpp entities like pub/subs, since
+    // they do own the underlying rmw entities, which are destroyed
+    // on their rclcpp destructors, thus no risk of dangling pointers.
+    clear_on_ready_callback();
+  }
+
   /// Take data so that the callback cannot be scheduled again
   std::shared_ptr<void>
   take_data() override
@@ -284,7 +294,7 @@ public:
 
   /// Execute any entities of the Waitable that are ready.
   void
-  execute(std::shared_ptr<void> & data) override
+  execute(const std::shared_ptr<void> & data) override
   {
     if (!data) {
       throw std::runtime_error("'data' is empty");

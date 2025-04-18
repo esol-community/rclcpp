@@ -72,6 +72,7 @@
 #include "rclcpp/node_interfaces/node_time_source_interface.hpp"
 #include "rclcpp/node_interfaces/node_timers_interface.hpp"
 #include "rclcpp/node_interfaces/node_topics_interface.hpp"
+#include "rclcpp/node_interfaces/node_type_descriptions_interface.hpp"
 #include "rclcpp/node_interfaces/node_waitables_interface.hpp"
 #include "rclcpp/parameter.hpp"
 #include "rclcpp/publisher.hpp"
@@ -689,6 +690,22 @@ public:
   size_t
   count_subscribers(const std::string & topic_name) const;
 
+  /// Return the number of clients created for a given service.
+  /**
+   * \sa rclcpp::Node::count_clients
+   */
+  RCLCPP_LIFECYCLE_PUBLIC
+  size_t
+  count_clients(const std::string & service_name) const;
+
+  /// Return the number of services created for a given service.
+  /**
+   * \sa rclcpp::Node::count_services
+   */
+  RCLCPP_LIFECYCLE_PUBLIC
+  size_t
+  count_services(const std::string & service_name) const;
+
   /// Return the topic endpoint information about publishers on a given topic.
   /**
    * \sa rclcpp::Node::get_publishers_info_by_topic
@@ -822,6 +839,14 @@ public:
   RCLCPP_LIFECYCLE_PUBLIC
   rclcpp::node_interfaces::NodeTimeSourceInterface::SharedPtr
   get_node_time_source_interface();
+
+  /// Return the Node's internal NodeTypeDescriptionsInterface implementation.
+  /**
+   * \sa rclcpp::Node::get_node_type_descriptions_interface
+   */
+  RCLCPP_LIFECYCLE_PUBLIC
+  rclcpp::node_interfaces::NodeTypeDescriptionsInterface::SharedPtr
+  get_node_type_descriptions_interface();
 
   /// Return the Node's internal NodeWaitablesInterface implementation.
   /**
@@ -1085,6 +1110,7 @@ private:
   rclcpp::node_interfaces::NodeClockInterface::SharedPtr node_clock_;
   rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters_;
   rclcpp::node_interfaces::NodeTimeSourceInterface::SharedPtr node_time_source_;
+  rclcpp::node_interfaces::NodeTypeDescriptionsInterface::SharedPtr node_type_descriptions_;
   rclcpp::node_interfaces::NodeWaitablesInterface::SharedPtr node_waitables_;
 
   const rclcpp::NodeOptions node_options_;

@@ -23,6 +23,7 @@
 
 #include "rcl/arguments.h"
 
+#include "rclcpp/create_generic_client.hpp"
 #include "rclcpp/detail/qos_parameters.hpp"
 #include "rclcpp/exceptions.hpp"
 #include "rclcpp/graph_listener.hpp"
@@ -36,6 +37,7 @@
 #include "rclcpp/node_interfaces/node_time_source.hpp"
 #include "rclcpp/node_interfaces/node_timers.hpp"
 #include "rclcpp/node_interfaces/node_topics.hpp"
+#include "rclcpp/node_interfaces/node_type_descriptions.hpp"
 #include "rclcpp/node_interfaces/node_waitables.hpp"
 #include "rclcpp/qos_overriding_options.hpp"
 
@@ -108,6 +110,22 @@ create_effective_namespace(const std::string & node_namespace, const std::string
 }
 
 }  // namespace
+
+/// Internal implementation to provide hidden and API/ABI stable changes to the Node.
+/**
+ * This class is intended to be an "escape hatch" within a stable distribution, so that certain
+ * smaller features and bugfixes can be backported, having a place to put new members, while
+ * maintaining the ABI.
+ *
+ * This is not intended to be a parking place for new features, it should be used for backports
+ * only, left empty and unallocated in Rolling.
+ */
+class Node::NodeImpl
+{
+public:
+  NodeImpl() = default;
+  ~NodeImpl() = default;
+};
 
 Node::Node(
   const std::string & node_name,
@@ -206,6 +224,12 @@ Node::Node(
       options.clock_qos(),
       options.use_clock_thread()
     )),
+  node_type_descriptions_(new rclcpp::node_interfaces::NodeTypeDescriptions(
+      node_base_,
+      node_logging_,
+      node_parameters_,
+      node_services_
+    )),
   node_waitables_(new rclcpp::node_interfaces::NodeWaitables(node_base_.get())),
   node_options_(options),
   sub_namespace_(""),
@@ -246,7 +270,8 @@ Node::Node(
   node_waitables_(other.node_waitables_),
   node_options_(other.node_options_),
   sub_namespace_(extend_sub_namespace(other.get_sub_namespace(), sub_namespace)),
-  effective_namespace_(create_effective_namespace(other.get_namespace(), sub_namespace_))
+  effective_namespace_(create_effective_namespace(other.get_namespace(), sub_namespace_)),
+  hidden_impl_(other.hidden_impl_)
 {
   // Validate new effective namespace.
   int validation_result;
@@ -498,6 +523,18 @@ Node::count_subscribers(const std::string & topic_name) const
   return node_graph_->count_subscribers(topic_name);
 }
 
+size_t
+Node::count_clients(const std::string & service_name) const
+{
+  return node_graph_->count_clients(service_name);
+}
+
+size_t
+Node::count_services(const std::string & service_name) const
+{
+  return node_graph_->count_services(service_name);
+}
+
 std::vector<rclcpp::TopicEndpointInfo>
 Node::get_publishers_info_by_topic(const std::string & topic_name, bool no_mangle) const
 {
@@ -591,6 +628,12 @@ Node::get_node_topics_interface()
   return node_topics_;
 }
 
+rclcpp::node_interfaces::NodeTypeDescriptionsInterface::SharedPtr
+Node::get_node_type_descriptions_interface()
+{
+  return node_type_descriptions_;
+}
+
 rclcpp::node_interfaces::NodeServicesInterface::SharedPtr
 Node::get_node_services_interface()
 {
@@ -633,4 +676,21 @@ const NodeOptions &
 Node::get_node_options() const
 {
   return this->node_options_;
+}
+
+rclcpp::GenericClient::SharedPtr
+Node::create_generic_client(
+  const std::string & service_name,
+  const std::string & service_type,
+  const rclcpp::QoS & qos,
+  rclcpp::CallbackGroup::SharedPtr group)
+{
+  return rclcpp::create_generic_client(
+    node_base_,
+    node_graph_,
+    node_services_,
+    service_name,
+    service_type,
+    qos,
+    group);
 }

@@ -218,7 +218,7 @@ SubscriptionBase::take_type_erased(void * message_out, rclcpp::MessageInfo & mes
     &message_info_out.get_rmw_message_info(),
     nullptr  // rmw_subscription_allocation_t is unused here
   );
-  TRACEPOINT(rclcpp_take, static_cast<const void *>(message_out));
+  TRACETOOLS_TRACEPOINT(rclcpp_take, static_cast<const void *>(message_out));
   if (RCL_RET_SUBSCRIPTION_TAKE_FAILED == ret) {
     return false;
   } else if (RCL_RET_OK != ret) {
@@ -244,6 +244,9 @@ SubscriptionBase::take_serialized(
     &message_out.get_rcl_serialized_message(),
     &message_info_out.get_rmw_message_info(),
     nullptr);
+  TRACETOOLS_TRACEPOINT(
+    rclcpp_take,
+    static_cast<const void *>(&message_out.get_rcl_serialized_message()));
   if (RCL_RET_SUBSCRIPTION_TAKE_FAILED == ret) {
     return false;
   } else if (RCL_RET_OK != ret) {
@@ -298,7 +301,20 @@ SubscriptionBase::setup_intra_process(
 bool
 SubscriptionBase::can_loan_messages() const
 {
-  return rcl_subscription_can_loan_messages(subscription_handle_.get());
+  bool retval = rcl_subscription_can_loan_messages(subscription_handle_.get());
+  if (retval) {
+    // TODO(clalancette): The loaned message interface is currently not safe to use with
+    // shared_ptr callbacks.  If a user takes a copy of the shared_ptr, it can get freed from
+    // underneath them via rcl_return_loaned_message_from_subscription().  The correct solution is
+    // to return the loaned message in a custom deleter, but that needs to be carefully handled
+    // with locking.  Warn the user about this until we fix it.
+    RCLCPP_WARN_ONCE(
+      this->node_logger_,
+      "Loaned messages are only safe with const ref subscription callbacks. "
+      "If you are using any other kind of subscriptions, "
+      "set the ROS_DISABLE_LOANED_MESSAGES environment variable to 1 (the default).");
+  }
+  return retval;
 }
 
 rclcpp::Waitable::SharedPtr

@@ -352,7 +352,7 @@ public:
 
       rclcpp::exceptions::throw_from_rcl_error(ret, "could not create service");
     }
-    TRACEPOINT(
+    TRACETOOLS_TRACEPOINT(
       rclcpp_service_callback_added,
       static_cast<const void *>(get_service_handle().get()),
       static_cast<const void *>(&any_callback_));
@@ -387,7 +387,7 @@ public:
     }
 
     service_handle_ = service_handle;
-    TRACEPOINT(
+    TRACETOOLS_TRACEPOINT(
       rclcpp_service_callback_added,
       static_cast<const void *>(get_service_handle().get()),
       static_cast<const void *>(&any_callback_));
@@ -424,7 +424,7 @@ public:
     // In this case, rcl owns the service handle memory
     service_handle_ = std::shared_ptr<rcl_service_t>(new rcl_service_t);
     service_handle_->impl = service_handle->impl;
-    TRACEPOINT(
+    TRACETOOLS_TRACEPOINT(
       rclcpp_service_callback_added,
       static_cast<const void *>(get_service_handle().get()),
       static_cast<const void *>(&any_callback_));
@@ -486,6 +486,14 @@ public:
   {
     rcl_ret_t ret = rcl_send_response(get_service_handle().get(), &req_id, &response);
 
+    if (ret == RCL_RET_TIMEOUT) {
+      RCLCPP_WARN(
+        node_logger_.get_child("rclcpp"),
+        "failed to send response to %s (timeout): %s",
+        this->get_service_name(), rcl_get_error_string().str);
+      rcl_reset_error();
+      return;
+    }
     if (ret != RCL_RET_OK) {
       rclcpp::exceptions::throw_from_rcl_error(ret, "failed to send response");
     }

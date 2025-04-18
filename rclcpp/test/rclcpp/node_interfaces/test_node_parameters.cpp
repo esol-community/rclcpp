@@ -77,9 +77,9 @@ TEST_F(TestNodeParameters, list_parameters)
   std::vector<std::string> prefixes;
   const auto list_result = node_parameters->list_parameters(prefixes, 1u);
 
-  // Currently the only default parameter is 'use_sim_time', but that may change.
+  // Currently the default parameters are 'use_sim_time' and 'start_type_description_service'
   size_t number_of_parameters = list_result.names.size();
-  EXPECT_GE(1u, number_of_parameters);
+  EXPECT_GE(2u, number_of_parameters);
 
   const std::string parameter_name = "new_parameter";
   const rclcpp::ParameterValue value(true);
@@ -95,15 +95,15 @@ TEST_F(TestNodeParameters, list_parameters)
     std::find(list_result2.names.begin(), list_result2.names.end(), parameter_name),
     list_result2.names.end());
 
-  // Check prefixes
+  // Check prefixes and the depth relative to the given prefixes
   const std::string parameter_name2 = "prefix.new_parameter";
   const rclcpp::ParameterValue value2(true);
   const rcl_interfaces::msg::ParameterDescriptor descriptor2;
   const auto added_parameter_value2 =
     node_parameters->declare_parameter(parameter_name2, value2, descriptor2, false);
-  EXPECT_EQ(value.get<bool>(), added_parameter_value.get<bool>());
+  EXPECT_EQ(value2.get<bool>(), added_parameter_value2.get<bool>());
   prefixes = {"prefix"};
-  auto list_result3 = node_parameters->list_parameters(prefixes, 2u);
+  auto list_result3 = node_parameters->list_parameters(prefixes, 1u);
   EXPECT_EQ(1u, list_result3.names.size());
   EXPECT_NE(
     std::find(list_result3.names.begin(), list_result3.names.end(), parameter_name2),
@@ -116,6 +116,13 @@ TEST_F(TestNodeParameters, list_parameters)
   EXPECT_NE(
     std::find(list_result4.names.begin(), list_result4.names.end(), parameter_name),
     list_result4.names.end());
+
+  // Return all parameters when the depth = 0
+  auto list_result5 = node_parameters->list_parameters(prefixes, 0u);
+  EXPECT_EQ(1u, list_result5.names.size());
+  EXPECT_NE(
+    std::find(list_result5.names.begin(), list_result5.names.end(), parameter_name),
+    list_result5.names.end());
 }
 
 TEST_F(TestNodeParameters, parameter_overrides)
