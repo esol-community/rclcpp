@@ -2,6 +2,164 @@
 Changelog for package rclcpp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+29.4.0 (2025-04-04)
+-------------------
+* Removed trailing whitespace from the codebase. (`#2791 <https://github.com/ros2/rclcpp/issues/2791>`_)
+* Expanded docstring of `get_rmw_qos_profile()` (`#2787 <https://github.com/ros2/rclcpp/issues/2787>`_)
+* Set envars to run tests with rmw_zenoh_cpp with multicast discovery (`#2776 <https://github.com/ros2/rclcpp/issues/2776>`_)
+* fix: Compilefix for clang (`#2775 <https://github.com/ros2/rclcpp/issues/2775>`_)
+* add exception doc for configure_introspection. (`#2773 <https://github.com/ros2/rclcpp/issues/2773>`_)
+* feat: Add ClockWaiter and ClockConditionalVariable (`#2691 <https://github.com/ros2/rclcpp/issues/2691>`_)
+* doc: Added warning to not instantiate Clock directly with RCL_ROS_TIME (`#2768 <https://github.com/ros2/rclcpp/issues/2768>`_)
+* Use rmw_event_type_is_supported in test_qos_event (`#2761 <https://github.com/ros2/rclcpp/issues/2761>`_)
+* Support action typesupport helper (`#2750 <https://github.com/ros2/rclcpp/issues/2750>`_)
+* use maybe_unused attribute for the portability. (`#2758 <https://github.com/ros2/rclcpp/issues/2758>`_)
+* Executor strong reference fix (`#2745 <https://github.com/ros2/rclcpp/issues/2745>`_)
+* Cleanup of https://github.com/ros2/rclcpp/pull/2683 (`#2714 <https://github.com/ros2/rclcpp/issues/2714>`_)
+* Fix typo in doc section for get_service_typesupport_handle (`#2751 <https://github.com/ros2/rclcpp/issues/2751>`_)
+* Test case and fix for for https://github.com/ros2/rclcpp/issues/2652 (`#2713 <https://github.com/ros2/rclcpp/issues/2713>`_)
+* fix(timer): Delete node, after executor thread terminated (`#2737 <https://github.com/ros2/rclcpp/issues/2737>`_)
+* update doc section for spin_xxx methods. (`#2730 <https://github.com/ros2/rclcpp/issues/2730>`_)
+* fix: Expose timers used by rclcpp::Waitables (`#2699 <https://github.com/ros2/rclcpp/issues/2699>`_)
+* use rmw_qos_profile_rosout_default instead of rcl. (`#2663 <https://github.com/ros2/rclcpp/issues/2663>`_)
+* fix(Executor): Fixed entities not beeing executed after just beeing added (`#2724 <https://github.com/ros2/rclcpp/issues/2724>`_)
+* fix: make the loop condition align with the description (`#2726 <https://github.com/ros2/rclcpp/issues/2726>`_)
+* Collect log messages from rcl, and reset. (`#2720 <https://github.com/ros2/rclcpp/issues/2720>`_)
+* Contributors: Abhishek Kashyap, Alejandro Hernández Cordero, Barry Xu, Janosch Machowinski, Leander Stephen D'Souza, Tomoya Fujita, Yuyuan Yuan
+
+29.3.0 (2024-12-20)
+-------------------
+* Fix transient local IPC publish  (`#2708 <https://github.com/ros2/rclcpp/issues/2708>`_)
+* apply actual QoS from rmw to the IPC publisher. (`#2707 <https://github.com/ros2/rclcpp/issues/2707>`_)
+* Adding in topic name to logging on IPC issues (`#2706 <https://github.com/ros2/rclcpp/issues/2706>`_)
+* fix TestTimeSource.ROS_time_valid_attach_detach. (`#2700 <https://github.com/ros2/rclcpp/issues/2700>`_)
+* Update docstring for `rclcpp::Node::now()` (`#2696 <https://github.com/ros2/rclcpp/issues/2696>`_)
+* Re-enable executor test on rmw_connextdds. (`#2693 <https://github.com/ros2/rclcpp/issues/2693>`_)
+* Fix warnings on Windows. (`#2692 <https://github.com/ros2/rclcpp/issues/2692>`_)
+* Omnibus fixes for running tests with Connext. (`#2684 <https://github.com/ros2/rclcpp/issues/2684>`_)
+* fix(Executor): Fix segfault if callback group is deleted during rmw_wait (`#2683 <https://github.com/ros2/rclcpp/issues/2683>`_)
+* Contributors: Chris Lalancette, Jeffery Hsu, Patrick Roncagliolo, Steve Macenski, Tomoya Fujita, jmachowinski
+
+29.2.0 (2024-11-25)
+-------------------
+* accept custom allocator for LoanedMessage. (`#2672 <https://github.com/ros2/rclcpp/issues/2672>`_)
+* Contributors: Tomoya Fujita
+
+29.1.0 (2024-11-20)
+-------------------
+* a couple of typo fixes in doc section for LoanedMessage. (`#2676 <https://github.com/ros2/rclcpp/issues/2676>`_)
+* Make sure callback_end tracepoint is triggered in AnyServiceCallback (`#2670 <https://github.com/ros2/rclcpp/issues/2670>`_)
+* Correct the incorrect comments in generic_client.hpp (`#2662 <https://github.com/ros2/rclcpp/issues/2662>`_)
+* Fix NodeOptions assignment operator (`#2656 <https://github.com/ros2/rclcpp/issues/2656>`_)
+* set QoS History KEEP_ALL explicitly for statistics publisher. (`#2650 <https://github.com/ros2/rclcpp/issues/2650>`_)
+* Fix test_intra_process_manager.cpp with rmw_zenoh_cpp (`#2653 <https://github.com/ros2/rclcpp/issues/2653>`_)
+* Fixed test_events_executors in zenoh (`#2643 <https://github.com/ros2/rclcpp/issues/2643>`_)
+* rmw_fastrtps supports service event gid uniqueness test. (`#2638 <https://github.com/ros2/rclcpp/issues/2638>`_)
+* print warning if event callback is not supported instead of passing exception. (`#2648 <https://github.com/ros2/rclcpp/issues/2648>`_)
+* Implement callback support of async_send_request for service generic client (`#2614 <https://github.com/ros2/rclcpp/issues/2614>`_)
+* Contributors: Alejandro Hernández Cordero, Barry Xu, Chris Lalancette, Christophe Bedard, Romain DESILLE, Tomoya Fujita
+
+29.0.0 (2024-10-03)
+-------------------
+* Fixed test qos rmw zenoh (`#2639 <https://github.com/ros2/rclcpp/issues/2639>`_)
+* verify client gid uniqueness for a single service event. (`#2636 <https://github.com/ros2/rclcpp/issues/2636>`_)
+* Skip some tests in test_qos_event and run others with event types supported by rmw_zenoh (`#2626 <https://github.com/ros2/rclcpp/issues/2626>`_)
+* Shutdown the context before context's destructor is invoked in tests (`#2633 <https://github.com/ros2/rclcpp/issues/2633>`_)
+* Skip rmw zenoh content filtering tests (`#2627 <https://github.com/ros2/rclcpp/issues/2627>`_)
+* Use InvalidServiceTypeError for unavailable service type in GenericClient (`#2629 <https://github.com/ros2/rclcpp/issues/2629>`_)
+* Implement generic service (`#2617 <https://github.com/ros2/rclcpp/issues/2617>`_)
+* fix events-executor warm-up bug and add unit-tests (`#2591 <https://github.com/ros2/rclcpp/issues/2591>`_)
+* remove unnecessary gtest-skip in test_executors (`#2600 <https://github.com/ros2/rclcpp/issues/2600>`_)
+* Correct node name in service test code (`#2615 <https://github.com/ros2/rclcpp/issues/2615>`_)
+* Minor naming fixes for ParameterValue to_string() function (`#2609 <https://github.com/ros2/rclcpp/issues/2609>`_)
+* Removed clang warnings (`#2605 <https://github.com/ros2/rclcpp/issues/2605>`_)
+* Fix a couple of issues in the documentation. (`#2608 <https://github.com/ros2/rclcpp/issues/2608>`_)
+* deprecate the static single threaded executor (`#2598 <https://github.com/ros2/rclcpp/issues/2598>`_)
+* Fix name of ParameterEventHandler class in doc (`#2604 <https://github.com/ros2/rclcpp/issues/2604>`_)
+* subscriber_statistics_collectors\_ should be protected by mutex. (`#2592 <https://github.com/ros2/rclcpp/issues/2592>`_)
+* Fix bug in timers lifecycle for events executor (`#2586 <https://github.com/ros2/rclcpp/issues/2586>`_)
+* fix rclcpp/test/rclcpp/CMakeLists.txt to check for the correct targets existance (`#2596 <https://github.com/ros2/rclcpp/issues/2596>`_)
+* Shut down context during init if logging config fails (`#2594 <https://github.com/ros2/rclcpp/issues/2594>`_)
+* Make more of the Waitable API abstract (`#2593 <https://github.com/ros2/rclcpp/issues/2593>`_)
+* Contributors: Alberto Soragna, Alejandro Hernández Cordero, Alexis Pojomovsky, Barry Xu, Chris Lalancette, Christophe Bedard, Kang, Hsin-Yi, Tomoya Fujita
+
+28.3.3 (2024-07-29)
+-------------------
+* Only compile the tests once. (`#2590 <https://github.com/ros2/rclcpp/issues/2590>`_)
+* Contributors: Chris Lalancette
+
+28.3.2 (2024-07-24)
+-------------------
+* Updated rcpputils path API (`#2579 <https://github.com/ros2/rclcpp/issues/2579>`_)
+* Make the subscriber_triggered_to_receive_message test more reliable. (`#2584 <https://github.com/ros2/rclcpp/issues/2584>`_)
+  * Make the subscriber_triggered_to_receive_message test more reliable.
+  In the current code, inside of the timer we create the subscription
+  and the publisher, publish immediately, and expect the subscription
+  to get it immediately.  But it may be the case that discovery
+  hasn't even happened between the publisher and the subscription
+  by the time the publish call happens.
+  To make this more reliable, create the subscription and publish *before*
+  we ever create and spin on the timer.  This at least gives 100
+  milliseconds for discovery to happen.  That may not be quite enough
+  to make this reliable on all platforms, but in my local testing this
+  helps a lot.  Prior to this change I can make this fail one out of 10
+  times, and after the change I've run 100 times with no failures.
+* Have the EventsExecutor use more common code  (`#2570 <https://github.com/ros2/rclcpp/issues/2570>`_)
+  * move notify waitable setup to its own function
+  * move mutex lock to retrieve_entity utility
+  * use entities_need_rebuild\_ atomic bool in events-executors
+  * remove duplicated set_on_ready_callback for notify_waitable
+  * use mutex from base class rather than a new recursive mutex
+  * use current_collection\_ member in events-executor
+  * delay adding notify waitable to collection
+  * postpone clearing the current collection
+  * commonize notify waitable and collection
+  * commonize add/remove node/cbg methods
+  * fix linter errors
+  ---------
+* Removed deprecated methods and classes (`#2575 <https://github.com/ros2/rclcpp/issues/2575>`_)
+* Release ownership of entities after spinning cancelled (`#2556 <https://github.com/ros2/rclcpp/issues/2556>`_)
+  * Release ownership of entities after spinning cancelled
+  * Move release action to every exit point in different spin functions
+  * Move wait_result\_.reset() before setting spinning to false
+  * Update test code
+  * Move test code to test_executors.cpp
+  ---------
+* Split test_executors.cpp even further. (`#2572 <https://github.com/ros2/rclcpp/issues/2572>`_)
+  That's because it is too large for Windows Debug to compile,
+  so split into smaller bits.
+  Even with this split, the file is too big; that's likely
+  because we are using TYPED_TEST here, which generates multiple
+  symbols per test case.  To deal with this, without further
+  breaking up the file, also add in the /bigobj flag when
+  compiling on Windows Debug.
+* avoid adding notify waitable twice to events-executor collection (`#2564 <https://github.com/ros2/rclcpp/issues/2564>`_)
+  * avoid adding notify waitable twice to events-executor entities collection
+  * remove redundant mutex lock
+  ---------
+* Contributors: Alberto Soragna, Alejandro Hernández Cordero, Barry Xu, Chris Lalancette
+
+28.3.1 (2024-06-25)
+-------------------
+* Remove unnecessary msg includes in tests (`#2566 <https://github.com/ros2/rclcpp/issues/2566>`_)
+* Fix copy-paste errors in function docs (`#2565 <https://github.com/ros2/rclcpp/issues/2565>`_)
+* Fix typo in function doc (`#2563 <https://github.com/ros2/rclcpp/issues/2563>`_)
+* Contributors: Christophe Bedard
+
+28.3.0 (2024-06-17)
+-------------------
+* Add test creating two content filter topics with the same topic name (`#2546 <https://github.com/ros2/rclcpp/issues/2546>`_) (`#2549 <https://github.com/ros2/rclcpp/issues/2549>`_)
+* add impl pointer for ExecutorOptions (`#2523 <https://github.com/ros2/rclcpp/issues/2523>`_)
+* Fixup Executor::spin_all() regression fix (`#2517 <https://github.com/ros2/rclcpp/issues/2517>`_)
+* Add 'mimick' label to tests which use Mimick (`#2516 <https://github.com/ros2/rclcpp/issues/2516>`_)
+* Contributors: Alejandro Hernández Cordero, Scott K Logan, William Woodall
+
+28.2.0 (2024-04-26)
+-------------------
+* Check for negative time in rclcpp::Time(int64_t nanoseconds, ...) constructor (`#2510 <https://github.com/ros2/rclcpp/issues/2510>`_)
+* Revise the description of service configure_introspection() (`#2511 <https://github.com/ros2/rclcpp/issues/2511>`_)
+* Contributors: Barry Xu, Sharmin Ramli
+
 28.1.0 (2024-04-16)
 -------------------
 * Remove references to index.ros.org. (`#2504 <https://github.com/ros2/rclcpp/issues/2504>`_)

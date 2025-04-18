@@ -152,24 +152,19 @@ LifecycleNode::LifecycleNode(
 
 LifecycleNode::~LifecycleNode()
 {
-  // shutdown if necessary to avoid leaving the device in unknown state
-  if (LifecycleNode::get_current_state().id() !=
-    lifecycle_msgs::msg::State::PRIMARY_STATE_FINALIZED)
-  {
-    auto ret = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR;
-    auto finalized = LifecycleNode::shutdown(ret);
-    if (finalized.id() != lifecycle_msgs::msg::State::PRIMARY_STATE_FINALIZED ||
-      ret != rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS)
-    {
-      RCLCPP_WARN(
-        rclcpp::get_logger("rclcpp_lifecycle"),
-        "Shutdown error in destruction of LifecycleNode: final state(%s)",
-        finalized.label().c_str());
-    }
+  auto current_state = LifecycleNode::get_current_state().id();
+  if (current_state != lifecycle_msgs::msg::State::PRIMARY_STATE_FINALIZED) {
+    // This might be leaving sensors and devices without shutting down unintentionally.
+    // It is user's responsibility to call shutdown to avoid leaving them unknow states.
+    RCLCPP_WARN(
+      rclcpp::get_logger("rclcpp_lifecycle"),
+      "LifecycleNode is not shut down: Node still in state(%u) in destructor",
+      current_state);
   }
 
   // release sub-interfaces in an order that allows them to consult with node_base during tear-down
   node_waitables_.reset();
+  node_type_descriptions_.reset();
   node_time_source_.reset();
   node_parameters_.reset();
   node_clock_.reset();
@@ -178,6 +173,7 @@ LifecycleNode::~LifecycleNode()
   node_timers_.reset();
   node_logging_.reset();
   node_graph_.reset();
+  node_base_.reset();
 }
 
 const char *

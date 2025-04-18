@@ -3,6 +3,54 @@ Changelog for package rclcpp_action
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
+29.4.0 (2025-04-04)
+-------------------
+* Remove warning (`#2790 <https://github.com/ros2/rclcpp/issues/2790>`_)
+* Harden rclcpp_action::convert(). (`#2786 <https://github.com/ros2/rclcpp/issues/2786>`_)
+* Add new interfaces to enable introspection for action (`#2743 <https://github.com/ros2/rclcpp/issues/2743>`_)
+* use maybe_unused attribute for the portability. (`#2758 <https://github.com/ros2/rclcpp/issues/2758>`_)
+* fix: Expose timers used by rclcpp::Waitables (`#2699 <https://github.com/ros2/rclcpp/issues/2699>`_)
+* Collect log messages from rcl, and reset. (`#2720 <https://github.com/ros2/rclcpp/issues/2720>`_)
+* Contributors: Alejandro Hernández Cordero, Barry Xu, Janosch Machowinski, Tomoya Fujita
+
+29.3.0 (2024-12-20)
+-------------------
+* Make ament_cmake a buildtool dependency (`#2689 <https://github.com/ros2/rclcpp/issues/2689>`_)
+* Contributors: Nathan Wiebe Neufeldt
+
+29.2.0 (2024-11-25)
+-------------------
+
+29.1.0 (2024-11-20)
+-------------------
+* Fix documentation typo in server_goal_handle.hpp (`#2669 <https://github.com/ros2/rclcpp/issues/2669>`_)
+* Contributors: YR
+
+29.0.0 (2024-10-03)
+-------------------
+* Increase the timeout for the cppcheck on rclcpp_action. (`#2640 <https://github.com/ros2/rclcpp/issues/2640>`_)
+* add smart pointer macros definitions to action server and client base classes (`#2631 <https://github.com/ros2/rclcpp/issues/2631>`_)
+* Contributors: Alberto Soragna, Chris Lalancette
+
+28.3.3 (2024-07-29)
+-------------------
+
+28.3.2 (2024-07-24)
+-------------------
+
+28.3.1 (2024-06-25)
+-------------------
+* Fix typo in function doc (`#2563 <https://github.com/ros2/rclcpp/issues/2563>`_)
+* Contributors: Christophe Bedard
+
+28.3.0 (2024-06-17)
+-------------------
+* Add 'mimick' label to tests which use Mimick (`#2516 <https://github.com/ros2/rclcpp/issues/2516>`_)
+* Contributors: Scott K Logan
+
+28.2.0 (2024-04-26)
+-------------------
+
 28.1.0 (2024-04-16)
 -------------------
 * Remove references to index.ros.org. (`#2504 <https://github.com/ros2/rclcpp/issues/2504>`_)

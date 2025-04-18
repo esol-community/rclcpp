@@ -38,7 +38,8 @@ protected:
   {
     rclcpp::init(0, nullptr);
   }
-  void TearDown() override
+
+  static void TearDownTestCase()
   {
     rclcpp::shutdown();
   }
