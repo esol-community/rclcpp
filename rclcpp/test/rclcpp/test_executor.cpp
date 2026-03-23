@@ -336,18 +336,18 @@ TEST_F(TestExecutor, spin_all_fail_wait_set_clear) {
     node->create_wall_timer(std::chrono::milliseconds(1), [&]() {});
 
   dummy.add_node(node);
-  auto callback = [this](test_msgs::msg::Empty::ConstSharedPtr) {};
+  auto callback = [](test_msgs::msg::Empty::ConstSharedPtr) {};
   rclcpp::Subscription<test_msgs::msg::Empty>::SharedPtr subscription;
   auto node_topics = node->get_node_topics_interface();
   subscription =
     rclcpp::create_subscription<test_msgs::msg::Empty>(
     node_topics, "test", rclcpp::QoS(10), std::move(callback));
-  auto mock = mocking_utils::patch_and_return("lib:rclcpp", rcl_wait_set_clear, RCL_RET_ERROR);
 
-  dummy.spin_all(std::chrono::milliseconds(1));
-  // second spin_all triggers rcl_wait_set_clear that should be called
-  // whenever a waitset gets rebuild and it was not changed in size.
+  auto mock = mocking_utils::patch_and_return("lib:rclcpp", rcl_wait_set_clear, RCL_RET_ERROR);
   RCLCPP_EXPECT_THROW_EQ(
+    // the first spin might trigger the rebuild, but only the second triggers
+    // it for sure, therefore we spin two times
+    dummy.spin_all(std::chrono::milliseconds(1));
     dummy.spin_all(std::chrono::milliseconds(1)),
     std::runtime_error("Couldn't clear the wait set: error not set"));
 }
@@ -371,7 +371,7 @@ TEST_F(TestExecutor, spin_some_fail_add_handles_to_wait_set) {
 
   // create subscription explicitly, because we do not create subscription
   // on /parameter_events for 'use_sim_time' parameter anymore.
-  auto callback = [this](test_msgs::msg::Empty::ConstSharedPtr) {};
+  auto callback = [](test_msgs::msg::Empty::ConstSharedPtr) {};
   rclcpp::Subscription<test_msgs::msg::Empty>::SharedPtr subscription;
   subscription =
     node->create_subscription<test_msgs::msg::Empty>(

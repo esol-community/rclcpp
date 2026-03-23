@@ -100,7 +100,7 @@ public:
   /// Set the context, return this for parameter idiom.
   RCLCPP_PUBLIC
   NodeOptions &
-  context(rclcpp::Context::SharedPtr context);
+  context(const rclcpp::Context::SharedPtr & context);
 
   /// Return a reference to the list of arguments for the node.
   RCLCPP_PUBLIC
@@ -143,6 +143,14 @@ public:
   append_parameter_override(const std::string & name, const ParameterT & value)
   {
     this->parameter_overrides().emplace_back(name, rclcpp::ParameterValue(value));
+    return *this;
+  }
+
+  /// Append a single parameter override, parameter idiom style.
+  NodeOptions &
+  append_parameter_override(const rclcpp::Parameter & param)
+  {
+    this->parameter_overrides().push_back(param);
     return *this;
   }
 

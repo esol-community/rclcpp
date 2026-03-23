@@ -14,6 +14,7 @@
 
 #include <gtest/gtest.h>
 
+#include <chrono>
 #include <memory>
 #include <string>
 #include <vector>
@@ -106,4 +107,59 @@ TEST(TestUtilities, wait_for_message_twice_one_sub) {
   EXPECT_EQ(out2, *get_messages_strings()[0]);
 
   rclcpp::shutdown();
+}
+
+TEST(TestUtilities, wait_for_last_message) {
+  rclcpp::init(0, nullptr);
+
+  auto node = std::make_shared<rclcpp::Node>("wait_for_last_message_node");
+  auto qos = rclcpp::QoS(1).reliable().transient_local();
+
+  using MsgT = test_msgs::msg::Strings;
+  auto pub = node->create_publisher<MsgT>("wait_for_last_message_topic", qos);
+  pub->publish(*get_messages_strings()[0]);
+
+  MsgT out;
+  auto received = false;
+  auto wait = std::async(
+    [&]() {
+      auto ret = rclcpp::wait_for_message(out, node, "wait_for_last_message_topic", 5s, qos);
+      EXPECT_TRUE(ret);
+      received = true;
+    });
+
+  ASSERT_NO_THROW(wait.get());
+  ASSERT_TRUE(received);
+  EXPECT_EQ(out, *get_messages_strings()[0]);
+
+  rclcpp::shutdown();
+}
+
+TEST(TestUtilities, wait_for_message_custom_context) {
+  auto context = std::make_shared<rclcpp::Context>();
+  context->init(0, nullptr);
+
+  auto node_opt = rclcpp::NodeOptions().context(context);
+  auto node = std::make_shared<rclcpp::Node>("wait_for_message_custom_context_node", node_opt);
+
+  using MsgT = test_msgs::msg::Strings;
+  auto pub = node->create_publisher<MsgT>("wait_for_message_topic", 10);
+
+  MsgT out;
+  auto received = false;
+  auto wait = std::async(
+    [&]() {
+      auto ret = rclcpp::wait_for_message(out, node, "wait_for_message_topic", 5s);
+      EXPECT_TRUE(ret);
+      received = true;
+    });
+
+  for (auto i = 0u; i < 10 && received == false; ++i) {
+    pub->publish(*get_messages_strings()[0]);
+    std::this_thread::sleep_for(1s);
+  }
+  ASSERT_TRUE(received);
+  EXPECT_EQ(out, *get_messages_strings()[0]);
+
+  context->shutdown("test complete");
 }

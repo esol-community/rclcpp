@@ -59,17 +59,17 @@ public:
 
   NodeTypeDescriptionsImpl(
     rclcpp::node_interfaces::NodeBaseInterface::SharedPtr node_base,
-    rclcpp::node_interfaces::NodeLoggingInterface::SharedPtr node_logging,
-    rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters,
-    rclcpp::node_interfaces::NodeServicesInterface::SharedPtr node_services)
+    const rclcpp::node_interfaces::NodeLoggingInterface::SharedPtr & node_logging,
+    const rclcpp::node_interfaces::NodeParametersInterface::SharedPtr & node_parameters,
+    const rclcpp::node_interfaces::NodeServicesInterface::SharedPtr & node_services)
   : logger_(node_logging->get_logger()),
-    node_base_(node_base)
+    node_base_(std::move(node_base))
   {
+    rclcpp::ParameterValue enable_param;
     const std::string enable_param_name = "start_type_description_service";
 
-    bool enabled = false;
-    try {
-      auto enable_param = node_parameters->declare_parameter(
+    if (!node_parameters->has_parameter(enable_param_name)) {
+      enable_param = node_parameters->declare_parameter(
         enable_param_name,
         rclcpp::ParameterValue(true),
         rcl_interfaces::msg::ParameterDescriptor()
@@ -77,14 +77,22 @@ public:
         .set__type(rclcpp::PARAMETER_BOOL)
         .set__description("Start the ~/get_type_description service for this node.")
         .set__read_only(true));
-      enabled = enable_param.get<bool>();
-    } catch (const rclcpp::exceptions::InvalidParameterTypeException & exc) {
-      RCLCPP_ERROR(logger_, "%s", exc.what());
-      throw;
+    } else {
+      enable_param = node_parameters->get_parameter(enable_param_name).get_parameter_value();
+    }
+    if (enable_param.get_type() != rclcpp::PARAMETER_BOOL) {
+      RCLCPP_ERROR(
+        logger_,
+            "Invalid type '%s' for parameter 'start_type_description_service', should be 'bool'",
+        rclcpp::to_string(enable_param.get_type()).c_str());
+      std::ostringstream ss;
+      ss << "Wrong parameter type, parameter {" << enable_param_name << "} is of type {bool}, "
+         << "setting it to {" << to_string(enable_param.get_type()) << "} is not allowed.";
+      throw rclcpp::exceptions::InvalidParameterTypeException(enable_param_name, ss.str());
     }
 
-    if (enabled) {
-      auto * rcl_node = node_base->get_rcl_node_handle();
+    if (enable_param.get<bool>()) {
+      auto * rcl_node = node_base_->get_rcl_node_handle();
       std::shared_ptr<rcl_service_t> rcl_srv(
         new rcl_service_t,
         [rcl_node, logger = this->logger_](rcl_service_t * service)
@@ -113,9 +121,9 @@ public:
       rclcpp::AnyServiceCallback<ServiceT> cb;
       cb.set(
         [this](
-          std::shared_ptr<rmw_request_id_t> header,
-          std::shared_ptr<ServiceT::Request> request,
-          std::shared_ptr<ServiceT::Response> response
+          const std::shared_ptr<rmw_request_id_t> & header,
+          const std::shared_ptr<ServiceT::Request> & request,
+          const std::shared_ptr<ServiceT::Response> & response
         ) {
           rcl_node_type_description_service_handle_request(
             node_base_->get_rcl_node_handle(),
@@ -136,10 +144,10 @@ public:
 };
 
 NodeTypeDescriptions::NodeTypeDescriptions(
-  rclcpp::node_interfaces::NodeBaseInterface::SharedPtr node_base,
-  rclcpp::node_interfaces::NodeLoggingInterface::SharedPtr node_logging,
-  rclcpp::node_interfaces::NodeParametersInterface::SharedPtr node_parameters,
-  rclcpp::node_interfaces::NodeServicesInterface::SharedPtr node_services)
+  const rclcpp::node_interfaces::NodeBaseInterface::SharedPtr & node_base,
+  const rclcpp::node_interfaces::NodeLoggingInterface::SharedPtr & node_logging,
+  const rclcpp::node_interfaces::NodeParametersInterface::SharedPtr & node_parameters,
+  const rclcpp::node_interfaces::NodeServicesInterface::SharedPtr & node_services)
 : impl_(new NodeTypeDescriptionsImpl(
       node_base,
       node_logging,

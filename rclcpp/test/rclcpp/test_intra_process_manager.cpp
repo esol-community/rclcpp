@@ -162,7 +162,14 @@ public:
   explicit PublisherBase(const std::string & topic, const rclcpp::QoS & qos)
   : topic_name(topic),
     qos_profile(qos)
-  {}
+  {
+    // Initialize a mock GID with unique data based on this pointer
+    gid_.implementation_identifier = "mock_rmw";
+    auto ptr_value = reinterpret_cast<std::uintptr_t>(this);
+    for (size_t i = 0; i < RMW_GID_STORAGE_SIZE; ++i) {
+      gid_.data[i] = static_cast<uint8_t>((ptr_value >> (i * 8)) & 0xFF);
+    }
+  }
 
   virtual ~PublisherBase()
   {}
@@ -192,6 +199,12 @@ public:
     return qos_profile.durability() == rclcpp::DurabilityPolicy::TransientLocal;
   }
 
+  const rmw_gid_t &
+  get_gid() const
+  {
+    return gid_;
+  }
+
   bool
   operator==([[maybe_unused]] const rmw_gid_t & gid) const
   {
@@ -210,6 +223,7 @@ public:
 private:
   std::string topic_name;
   rclcpp::QoS qos_profile;
+  rmw_gid_t gid_;
 };
 
 template<typename T, typename Alloc = std::allocator<void>>
@@ -535,7 +549,7 @@ TEST(TestIntraProcessManager, add_pub_sub) {
  * - Remove the first subscription from ipm and add a new one.
  * - Publishes a unique_ptr message with a subscription not requesting ownership.
  * - The received message is expected to be the same, the first subscription do not receive it.
- * - Publishes a shared_ptr message with a subscription not requesting ownership.
+ * - Publishes a unique_ptr message with a subscription not requesting ownership.
  * - The received message is expected to be the same.
  */
 TEST(TestIntraProcessManager, single_subscription) {
@@ -587,9 +601,9 @@ TEST(TestIntraProcessManager, single_subscription) {
  * - One is expected to receive the published message, while the other will receive a copy.
  * - Publishes a unique_ptr message with 2 subscriptions not requesting ownership.
  * - Both received messages are expected to be the same as the published one.
- * - Publishes a shared_ptr message with 2 subscriptions requesting ownership.
+ * - Publishes a unique_ptr message with 2 subscriptions requesting ownership.
  * - Both received messages are expected to be a copy of the published one.
- * - Publishes a shared_ptr message with 2 subscriptions not requesting ownership.
+ * - Publishes a unique_ptr message with 2 subscriptions not requesting ownership.
  * - Both received messages are expected to be the same as the published one.
  */
 TEST(TestIntraProcessManager, multiple_subscriptions_same_type) {
@@ -694,9 +708,9 @@ TEST(TestIntraProcessManager, multiple_subscriptions_same_type) {
  * - The 2 subscriptions not requesting ownership are expected to both receive the same copy
  *   of the message, one of the subscription requesting ownership is expected to receive a
  *   different copy, while the last is expected to receive the published message.
- * - Publishes a shared_ptr message with 1 subscription requesting ownership and 1 not.
- * - The subscription requesting ownership is expected to receive a copy of the message, while
- *   the other is expected to receive the published message
+ * - Publishes a unique_ptr message with 1 subscription requesting ownership and 1 not.
+ * - The subscription requesting ownership is expected to receive the published message, while
+ *   the other is expected to receive a copy of the message
  */
 TEST(TestIntraProcessManager, multiple_subscriptions_different_type) {
   using IntraProcessManagerT = rclcpp::experimental::IntraProcessManager;

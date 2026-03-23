@@ -2,6 +2,58 @@
 Changelog for package rclcpp_components
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+31.0.0 (2026-03-20)
+-------------------
+* Avoid unecessary creation of MultiThreadedExecutor (`#3090 <https://github.com/ros2/rclcpp/issues/3090>`_)
+* Fix component registering in subdirectories (`#3064 <https://github.com/ros2/rclcpp/issues/3064>`_)
+* Contributors: pum1k, solo
+
+30.1.5 (2026-02-09)
+-------------------
+* Add library dependency to node executable in rclcpp_components_register_node (`#3047 <https://github.com/ros2/rclcpp/issues/3047>`_)
+* Contributors: YuJin Hong
+
+30.1.4 (2025-12-23)
+-------------------
+* Updated deprecated ament_index_cpp API (`#3011 <https://github.com/ros2/rclcpp/issues/3011>`_)
+* Contributors: Alejandro Hernández Cordero
+
+30.1.3 (2025-11-18)
+-------------------
+* Fix REP url locations (`#2987 <https://github.com/ros2/rclcpp/issues/2987>`_)
+* Contributors: Tim Clephas
+
+30.1.2 (2025-10-21)
+-------------------
+
+30.1.1 (2025-09-11)
+-------------------
+* Cleanup the dependencies in rclcpp_components. (`#2918 <https://github.com/ros2/rclcpp/issues/2918>`_)
+* Contributors: Chris Lalancette
+
+30.1.0 (2025-07-29)
+-------------------
+* fix cmake deprecation (`#2914 <https://github.com/ros2/rclcpp/issues/2914>`_)
+* Contributors: mosfet80
+
+30.0.0 (2025-07-01)
+-------------------
+* NEW PR: Add component_container for EventsExecutor (`#2885 <https://github.com/ros2/rclcpp/issues/2885>`_)
+* make sure that plugin arg includes the double colon. (`#2878 <https://github.com/ros2/rclcpp/issues/2878>`_)
+* Contributors: Mihir Rao, Tomoya Fujita
+
+29.6.1 (2025-06-23)
+-------------------
+* set thread names by node in component container isolated (`#2871 <https://github.com/ros2/rclcpp/issues/2871>`_)
+* Added missing chrono includes (`#2854 <https://github.com/ros2/rclcpp/issues/2854>`_)
+* Contributors: Adam Aposhian, Alejandro Hernández Cordero
+
+29.6.0 (2025-04-25)
+-------------------
+
+29.5.0 (2025-04-18)
+-------------------
+
 29.4.0 (2025-04-04)
 -------------------
 * Removed trailing whitespace from the codebase. (`#2791 <https://github.com/ros2/rclcpp/issues/2791>`_)

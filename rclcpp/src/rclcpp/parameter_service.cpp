@@ -26,8 +26,8 @@
 using rclcpp::ParameterService;
 
 ParameterService::ParameterService(
-  const std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> node_base,
-  const std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface> node_services,
+  const std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> & node_base,
+  const std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface> & node_services,
   rclcpp::node_interfaces::NodeParametersInterface * node_params,
   const rclcpp::QoS & qos_profile)
 {
@@ -37,8 +37,8 @@ ParameterService::ParameterService(
     node_base, node_services,
     node_name + "/" + parameter_service_names::get_parameters,
     [node_params](
-      const std::shared_ptr<rmw_request_id_t>,
-      const std::shared_ptr<rcl_interfaces::srv::GetParameters::Request> request,
+      const std::shared_ptr<rmw_request_id_t> &,
+      const std::shared_ptr<rcl_interfaces::srv::GetParameters::Request> & request,
       std::shared_ptr<rcl_interfaces::srv::GetParameters::Response> response)
     {
       try {
@@ -47,9 +47,9 @@ ParameterService::ParameterService(
           response->values.push_back(param.get_value_message());
         }
       } catch (const rclcpp::exceptions::ParameterNotDeclaredException & ex) {
-        RCLCPP_DEBUG(rclcpp::get_logger("rclcpp"), "Failed to get parameters: %s", ex.what());
+        RCLCPP_WARN(rclcpp::get_logger("rclcpp"), "Failed to get parameters: %s", ex.what());
       } catch (const rclcpp::exceptions::ParameterUninitializedException & ex) {
-        RCLCPP_DEBUG(rclcpp::get_logger("rclcpp"), "Failed to get parameters: %s", ex.what());
+        RCLCPP_WARN(rclcpp::get_logger("rclcpp"), "Failed to get parameters: %s", ex.what());
       }
     },
     qos_profile, nullptr);
@@ -58,8 +58,8 @@ ParameterService::ParameterService(
     node_base, node_services,
     node_name + "/" + parameter_service_names::get_parameter_types,
     [node_params](
-      const std::shared_ptr<rmw_request_id_t>,
-      const std::shared_ptr<rcl_interfaces::srv::GetParameterTypes::Request> request,
+      const std::shared_ptr<rmw_request_id_t> &,
+      const std::shared_ptr<rcl_interfaces::srv::GetParameterTypes::Request> & request,
       std::shared_ptr<rcl_interfaces::srv::GetParameterTypes::Response> response)
     {
       try {
@@ -70,7 +70,7 @@ ParameterService::ParameterService(
             return static_cast<rclcpp::ParameterType>(type);
           });
       } catch (const rclcpp::exceptions::ParameterNotDeclaredException & ex) {
-        RCLCPP_DEBUG(rclcpp::get_logger("rclcpp"), "Failed to get parameter types: %s", ex.what());
+        RCLCPP_WARN(rclcpp::get_logger("rclcpp"), "Failed to get parameter types: %s", ex.what());
       }
     },
     qos_profile, nullptr);
@@ -79,8 +79,8 @@ ParameterService::ParameterService(
     node_base, node_services,
     node_name + "/" + parameter_service_names::set_parameters,
     [node_params](
-      const std::shared_ptr<rmw_request_id_t>,
-      const std::shared_ptr<rcl_interfaces::srv::SetParameters::Request> request,
+      const std::shared_ptr<rmw_request_id_t> &,
+      const std::shared_ptr<rcl_interfaces::srv::SetParameters::Request> & request,
       std::shared_ptr<rcl_interfaces::srv::SetParameters::Response> response)
     {
       // Set parameters one-by-one, since there's no way to return a partial result if
@@ -91,7 +91,7 @@ ParameterService::ParameterService(
           result = node_params->set_parameters_atomically(
             {rclcpp::Parameter::from_parameter_msg(p)});
         } catch (const rclcpp::exceptions::ParameterNotDeclaredException & ex) {
-          RCLCPP_DEBUG(rclcpp::get_logger("rclcpp"), "Failed to set parameter: %s", ex.what());
+          RCLCPP_WARN(rclcpp::get_logger("rclcpp"), "Failed to set parameter: %s", ex.what());
           result.successful = false;
           result.reason = ex.what();
         }
@@ -104,8 +104,8 @@ ParameterService::ParameterService(
     node_base, node_services,
     node_name + "/" + parameter_service_names::set_parameters_atomically,
     [node_params](
-      const std::shared_ptr<rmw_request_id_t>,
-      const std::shared_ptr<rcl_interfaces::srv::SetParametersAtomically::Request> request,
+      const std::shared_ptr<rmw_request_id_t> &,
+      const std::shared_ptr<rcl_interfaces::srv::SetParametersAtomically::Request> & request,
       std::shared_ptr<rcl_interfaces::srv::SetParametersAtomically::Response> response)
     {
       std::vector<rclcpp::Parameter> pvariants;
@@ -119,7 +119,7 @@ ParameterService::ParameterService(
         auto result = node_params->set_parameters_atomically(pvariants);
         response->result = result;
       } catch (const rclcpp::exceptions::ParameterNotDeclaredException & ex) {
-        RCLCPP_DEBUG(
+        RCLCPP_WARN(
           rclcpp::get_logger("rclcpp"), "Failed to set parameters atomically: %s", ex.what());
         response->result.successful = false;
         response->result.reason = "One or more parameters were not declared before setting";
@@ -131,15 +131,15 @@ ParameterService::ParameterService(
     node_base, node_services,
     node_name + "/" + parameter_service_names::describe_parameters,
     [node_params](
-      const std::shared_ptr<rmw_request_id_t>,
-      const std::shared_ptr<rcl_interfaces::srv::DescribeParameters::Request> request,
+      const std::shared_ptr<rmw_request_id_t> &,
+      const std::shared_ptr<rcl_interfaces::srv::DescribeParameters::Request> & request,
       std::shared_ptr<rcl_interfaces::srv::DescribeParameters::Response> response)
     {
       try {
         auto descriptors = node_params->describe_parameters(request->names);
         response->descriptors = descriptors;
       } catch (const rclcpp::exceptions::ParameterNotDeclaredException & ex) {
-        RCLCPP_DEBUG(rclcpp::get_logger("rclcpp"), "Failed to describe parameters: %s", ex.what());
+        RCLCPP_WARN(rclcpp::get_logger("rclcpp"), "Failed to describe parameters: %s", ex.what());
       }
     },
     qos_profile, nullptr);
@@ -148,8 +148,8 @@ ParameterService::ParameterService(
     node_base, node_services,
     node_name + "/" + parameter_service_names::list_parameters,
     [node_params](
-      const std::shared_ptr<rmw_request_id_t>,
-      const std::shared_ptr<rcl_interfaces::srv::ListParameters::Request> request,
+      const std::shared_ptr<rmw_request_id_t> &,
+      const std::shared_ptr<rcl_interfaces::srv::ListParameters::Request> & request,
       std::shared_ptr<rcl_interfaces::srv::ListParameters::Response> response)
     {
       auto result = node_params->list_parameters(request->prefixes, request->depth);

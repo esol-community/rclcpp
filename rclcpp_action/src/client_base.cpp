@@ -101,7 +101,8 @@ public:
     const std::string & action_name,
     const rosidl_action_type_support_t * type_support,
     const rcl_action_client_options_t & client_options)
-  : node_graph_(node_graph),
+  : context_(node_base->get_context()),
+    node_graph_(node_graph),
     node_handle(node_base->get_shared_rcl_node_handle()),
     action_type_support_(type_support),
     logger(node_logging->get_logger().get_child("rclcpp_action")),
@@ -181,7 +182,7 @@ public:
   std::recursive_mutex cancel_requests_mutex;
 
   std::independent_bits_engine<
-    std::default_random_engine, 8, unsigned int> random_bytes_generator;
+    std::mt19937, 8, unsigned int> random_bytes_generator;
 };
 
 ClientBase::ClientBase(
@@ -614,10 +615,6 @@ ClientBase::set_on_ready_callback(
           user_data);
         break;
       }
-
-    default:
-      throw std::runtime_error("ClientBase::set_on_ready_callback: Unknown entity type.");
-      break;
   }
 
   if (RCL_RET_OK != ret) {

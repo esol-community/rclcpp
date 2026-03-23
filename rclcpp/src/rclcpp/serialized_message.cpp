@@ -26,8 +26,13 @@ namespace rclcpp
 
 inline void copy_rcl_message(const rcl_serialized_message_t & from, rcl_serialized_message_t & to)
 {
-  const auto ret = rmw_serialized_message_init(
-    &to, from.buffer_capacity, &from.allocator);
+  auto ret = RCL_RET_ERROR;
+  if (nullptr == to.buffer) {
+    ret = rmw_serialized_message_init(&to, from.buffer_capacity, &from.allocator);
+  } else {
+    ret = rmw_serialized_message_resize(&to, from.buffer_capacity);
+  }
+
   if (RCL_RET_OK != ret) {
     rclcpp::exceptions::throw_from_rcl_error(ret);
   }
@@ -65,12 +70,12 @@ SerializedMessage::SerializedMessage(const rcl_serialized_message_t & other)
   copy_rcl_message(other, serialized_message_);
 }
 
-SerializedMessage::SerializedMessage(SerializedMessage && other)
+SerializedMessage::SerializedMessage(SerializedMessage && other) noexcept
 : serialized_message_(
     std::exchange(other.serialized_message_, rmw_get_zero_initialized_serialized_message()))
 {}
 
-SerializedMessage::SerializedMessage(rcl_serialized_message_t && other)
+SerializedMessage::SerializedMessage(rcl_serialized_message_t && other) noexcept
 : serialized_message_(
     std::exchange(other, rmw_get_zero_initialized_serialized_message()))
 {}
@@ -78,7 +83,6 @@ SerializedMessage::SerializedMessage(rcl_serialized_message_t && other)
 SerializedMessage & SerializedMessage::operator=(const SerializedMessage & other)
 {
   if (this != &other) {
-    serialized_message_ = rmw_get_zero_initialized_serialized_message();
     copy_rcl_message(other.serialized_message_, serialized_message_);
   }
 
@@ -88,16 +92,23 @@ SerializedMessage & SerializedMessage::operator=(const SerializedMessage & other
 SerializedMessage & SerializedMessage::operator=(const rcl_serialized_message_t & other)
 {
   if (&serialized_message_ != &other) {
-    serialized_message_ = rmw_get_zero_initialized_serialized_message();
     copy_rcl_message(other, serialized_message_);
   }
 
   return *this;
 }
 
-SerializedMessage & SerializedMessage::operator=(SerializedMessage && other)
+SerializedMessage & SerializedMessage::operator=(SerializedMessage && other) noexcept
 {
   if (this != &other) {
+    if (nullptr != serialized_message_.buffer) {
+      const auto fini_ret = rmw_serialized_message_fini(&serialized_message_);
+      if (RCL_RET_OK != fini_ret) {
+        RCLCPP_ERROR(
+          get_logger("rclcpp"),
+          "Failed to destroy serialized message: %s", rcl_get_error_string().str);
+      }
+    }
     serialized_message_ =
       std::exchange(other.serialized_message_, rmw_get_zero_initialized_serialized_message());
   }
@@ -105,9 +116,17 @@ SerializedMessage & SerializedMessage::operator=(SerializedMessage && other)
   return *this;
 }
 
-SerializedMessage & SerializedMessage::operator=(rcl_serialized_message_t && other)
+SerializedMessage & SerializedMessage::operator=(rcl_serialized_message_t && other) noexcept
 {
   if (&serialized_message_ != &other) {
+    if (nullptr != serialized_message_.buffer) {
+      const auto fini_ret = rmw_serialized_message_fini(&serialized_message_);
+      if (RCL_RET_OK != fini_ret) {
+        RCLCPP_ERROR(
+          get_logger("rclcpp"),
+          "Failed to destroy serialized message: %s", rcl_get_error_string().str);
+      }
+    }
     serialized_message_ =
       std::exchange(other, rmw_get_zero_initialized_serialized_message());
   }

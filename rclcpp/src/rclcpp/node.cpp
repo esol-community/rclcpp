@@ -547,6 +547,18 @@ Node::get_subscriptions_info_by_topic(const std::string & topic_name, bool no_ma
   return node_graph_->get_subscriptions_info_by_topic(topic_name, no_mangle);
 }
 
+std::vector<rclcpp::ServiceEndpointInfo>
+Node::get_clients_info_by_service(const std::string & service_name, bool no_mangle) const
+{
+  return node_graph_->get_clients_info_by_service(service_name, no_mangle);
+}
+
+std::vector<rclcpp::ServiceEndpointInfo>
+Node::get_servers_info_by_service(const std::string & service_name, bool no_mangle) const
+{
+  return node_graph_->get_servers_info_by_service(service_name, no_mangle);
+}
+
 void
 Node::for_each_callback_group(
   const node_interfaces::NodeBaseInterface::CallbackGroupFunction & func)
@@ -562,7 +574,7 @@ Node::get_graph_event()
 
 void
 Node::wait_for_graph_change(
-  rclcpp::Event::SharedPtr event,
+  const rclcpp::Event::SharedPtr & event,
   std::chrono::nanoseconds timeout)
 {
   node_graph_->wait_for_graph_change(event, timeout);
@@ -683,13 +695,13 @@ Node::create_generic_client(
   const std::string & service_name,
   const std::string & service_type,
   const rclcpp::QoS & qos,
-  rclcpp::CallbackGroup::SharedPtr group)
+  const rclcpp::CallbackGroup::SharedPtr & group)
 {
   return rclcpp::create_generic_client(
     node_base_,
     node_graph_,
     node_services_,
-    service_name,
+    extend_name_with_sub_namespace(service_name, this->get_sub_namespace()),
     service_type,
     qos,
     group);

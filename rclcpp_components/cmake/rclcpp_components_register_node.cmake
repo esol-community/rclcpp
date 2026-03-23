@@ -30,9 +30,11 @@
 # :type RESOURCE_INDEX: string
 # :param NO_UNDEFINED_SYMBOLS: add linker flags to deny undefined symbols
 # :type NO_UNDEFINED_SYMBOLS: option
+# :param SKIP_LIBRARY_DEPENDENCY: skip adding dependency on the library target
+# :type SKIP_LIBRARY_DEPENDENCY: option
 #
 macro(rclcpp_components_register_node target)
-  cmake_parse_arguments(ARGS "NO_UNDEFINED_SYMBOLS" "PLUGIN;EXECUTABLE;EXECUTOR;RESOURCE_INDEX" "" ${ARGN})
+  cmake_parse_arguments(ARGS "NO_UNDEFINED_SYMBOLS;SKIP_LIBRARY_DEPENDENCY" "PLUGIN;EXECUTABLE;EXECUTOR;RESOURCE_INDEX" "" ${ARGN})
   if(ARGS_UNPARSED_ARGUMENTS)
     message(FATAL_ERROR "rclcpp_components_register_node() called with unused "
       "arguments: ${ARGS_UNPARSED_ARGUMENTS}")
@@ -57,17 +59,24 @@ macro(rclcpp_components_register_node target)
     message(STATUS "Setting executor non-default value ${executor}")
   endif()
 
+  if("${ARGS_PLUGIN}" MATCHES "^[^:]+:[^:]+$")
+    message(FATAL_ERROR "PLUGIN argument '${ARGS_PLUGIN}' appears to be incorrect. (e.g., 'package_name::ClassName').")
+  endif()
   set(component ${ARGS_PLUGIN})
   set(node ${ARGS_EXECUTABLE})
-  _rclcpp_components_register_package_hook()
   set(_path "lib")
   set(library_name "$<TARGET_FILE_NAME:${target}>")
   if(WIN32)
     set(_path "bin")
   endif()
-  set(_RCLCPP_COMPONENTS_${resource_index}__NODES
-    "${_RCLCPP_COMPONENTS_${resource_index}__NODES}${component};${_path}/$<TARGET_FILE_NAME:${target}>\n")
-  list(APPEND _RCLCPP_COMPONENTS_PACKAGE_RESOURCE_INDICES ${resource_index})
+  set_property(
+    DIRECTORY "${PROJECT_SOURCE_DIR}"
+    APPEND_STRING PROPERTY _RCLCPP_COMPONENTS_${resource_index}__NODES
+    "${component};${_path}/$<TARGET_FILE_NAME:${target}>\n")
+  set_property(
+    DIRECTORY "${PROJECT_SOURCE_DIR}"
+    APPEND PROPERTY _RCLCPP_COMPONENTS_PACKAGE_RESOURCE_INDICES
+    ${resource_index})
 
   if(ARGS_NO_UNDEFINED_SYMBOLS AND WIN32)
     message(WARNING "NO_UNDEFINED_SYMBOLS is enabled for target \"${target}\", but this is unsupported on windows.")
@@ -94,6 +103,9 @@ macro(rclcpp_components_register_node target)
   file(GENERATE OUTPUT ${PROJECT_BINARY_DIR}/rclcpp_components/node_main_${node}.cpp
     INPUT ${PROJECT_BINARY_DIR}/rclcpp_components/node_main_configured_${node}.cpp.in)
   add_executable(${node} ${PROJECT_BINARY_DIR}/rclcpp_components/node_main_${node}.cpp)
+  if(NOT ARGS_SKIP_LIBRARY_DEPENDENCY)
+    add_dependencies(${node} ${target})
+  endif()
   target_link_libraries(${node}
     class_loader::class_loader
     rclcpp::rclcpp

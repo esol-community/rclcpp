@@ -31,6 +31,7 @@
 #include "rclcpp/node_interfaces/node_base_interface.hpp"
 #include "rclcpp/node_interfaces/node_logging_interface.hpp"
 #include "rclcpp/node_interfaces/node_services_interface.hpp"
+#include "rclcpp/node_interfaces/node_clock_interface.hpp"
 
 #include "rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp"
 
@@ -52,10 +53,12 @@ namespace rclcpp_lifecycle
 LifecycleNode::LifecycleNodeInterfaceImpl::LifecycleNodeInterfaceImpl(
   std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> node_base_interface,
   std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface> node_services_interface,
-  std::shared_ptr<rclcpp::node_interfaces::NodeLoggingInterface> node_logging_interface)
+  std::shared_ptr<rclcpp::node_interfaces::NodeLoggingInterface> node_logging_interface,
+  std::shared_ptr<rclcpp::node_interfaces::NodeClockInterface> node_clock_interface)
 : node_base_interface_(node_base_interface),
   node_services_interface_(node_services_interface),
-  node_logging_interface_(node_logging_interface)
+  node_logging_interface_(node_logging_interface),
+  node_clock_interface_(node_clock_interface)
 {
 }
 
@@ -86,6 +89,8 @@ LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interf
   state_machine_options.enable_com_interface = enable_communication_interface;
   state_machine_options.allocator = node_options->allocator;
 
+  rcl_clock_t * clock = node_clock_interface_->get_clock()->get_clock_handle();
+
   // The call to initialize the state machine takes
   // currently five different typesupports for all publishers/services
   // created within the RCL_LIFECYCLE structure.
@@ -97,6 +102,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interf
   rcl_ret_t ret = rcl_lifecycle_state_machine_init(
     &state_machine_,
     node_handle,
+    clock,
     ROSIDL_GET_MSG_TYPE_SUPPORT(lifecycle_msgs, msg, TransitionEvent),
     rosidl_typesupport_cpp::get_service_type_support_handle<ChangeStateSrv>(),
     rosidl_typesupport_cpp::get_service_type_support_handle<GetStateSrv>(),
@@ -390,6 +396,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state(
   constexpr bool publish_update = true;
   State initial_state;
   unsigned int current_state_id;
+  const rcl_lifecycle_transition_t * original_transition{nullptr};
 
   {
     std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
@@ -405,14 +412,22 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state(
     // keep the initial state to pass to a transition callback
     initial_state = State(state_machine_.current_state);
 
+    original_transition =
+      rcl_lifecycle_get_transition_by_id(state_machine_.current_state, transition_id);
+
+
     if (
       rcl_lifecycle_trigger_transition_by_id(
         &state_machine_, transition_id, publish_update) != RCL_RET_OK)
     {
+      const char * transition_label = rcl_lifecycle_get_transition_label_by_id(
+        &state_machine_.transition_map, transition_id);
       RCLCPP_ERROR(
         node_logging_interface_->get_logger(),
-        "Unable to start transition %u from current state %s: %s",
-        transition_id, state_machine_.current_state->label, rcl_get_error_string().str);
+        "Unable to start transition %u (%s) from current state %s: %s",
+        transition_id,
+        transition_label ? transition_label : "unknown transition",
+        state_machine_.current_state->label, rcl_get_error_string().str);
       rcutils_reset_error();
       return RCL_RET_ERROR;
     }
@@ -455,12 +470,15 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state(
   // Update the internal current_state_
   current_state_ = State(state_machine_.current_state);
 
-  // error handling ?!
+  // error handling
   // TODO(karsten1987): iterate over possible ret value
   if (cb_return_code == node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR) {
-    RCLCPP_WARN(
-      node_logging_interface_->get_logger(),
-      "Error occurred while doing error handling.");
+    if (original_transition) {
+      RCLCPP_WARN(
+        node_logging_interface_->get_logger(),
+        "Callback returned ERROR during the transition: %s", original_transition->label);
+    }
+
 
     auto error_cb_code = execute_callback(current_state_id, initial_state);
     auto error_cb_label = get_label_for_return_code(error_cb_code);
