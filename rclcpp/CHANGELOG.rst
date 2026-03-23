@@ -2,6 +2,107 @@
 Changelog for package rclcpp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+28.1.17 (2026-02-09)
+--------------------
+* print warning message on owner node if the parameter operation fails. (`#3037 <https://github.com/ros2/rclcpp/issues/3037>`_) (`#3039 <https://github.com/ros2/rclcpp/issues/3039>`_)
+* remove test_static_executor_entities_collector.cpp (`#3041 <https://github.com/ros2/rclcpp/issues/3041>`_) (`#3046 <https://github.com/ros2/rclcpp/issues/3046>`_)
+* fix context in wait for message wait set (`#3030 <https://github.com/ros2/rclcpp/issues/3030>`_) (`#3032 <https://github.com/ros2/rclcpp/issues/3032>`_)
+* Contributors: mergify[bot]
+
+28.1.16 (2026-01-21)
+--------------------
+* Improve the robustness of the TopicEndpointInfo constructor (`#3013 <https://github.com/ros2/rclcpp/issues/3013>`_) (`#3015 <https://github.com/ros2/rclcpp/issues/3015>`_)
+  (cherry picked from commit 7f783cbf587a2897572263b48b9583d8021f3958)
+  Co-authored-by: Barry Xu <barry.xu@sony.com>
+* Contributors: mergify[bot]
+
+28.1.15 (2025-12-23)
+--------------------
+* Unified Node Interfaces: Add const version of get_node_x_interface() (`#3006 <https://github.com/ros2/rclcpp/issues/3006>`_) (`#3009 <https://github.com/ros2/rclcpp/issues/3009>`_)
+* remove I/O from signal handler. (`#3000 <https://github.com/ros2/rclcpp/issues/3000>`_) (`#3004 <https://github.com/ros2/rclcpp/issues/3004>`_)
+* correct test function descriptions (`#2970 <https://github.com/ros2/rclcpp/issues/2970>`_) (`#2993 <https://github.com/ros2/rclcpp/issues/2993>`_)
+* Contributors: mergify[bot]
+
+28.1.14 (2025-11-18)
+--------------------
+* Fix REP url locations (`#2987 <https://github.com/ros2/rclcpp/issues/2987>`_) (`#2990 <https://github.com/ros2/rclcpp/issues/2990>`_)
+* Contributors: mergify[bot]
+
+28.1.13 (2025-10-21)
+--------------------
+
+28.1.12 (2025-09-11)
+--------------------
+* Removed warning test_qos (`#2859 <https://github.com/ros2/rclcpp/issues/2859>`_) (`#2945 <https://github.com/ros2/rclcpp/issues/2945>`_)
+* Allow for implicitly convertable loggers as well (`#2922 <https://github.com/ros2/rclcpp/issues/2922>`_) (`#2936 <https://github.com/ros2/rclcpp/issues/2936>`_) (`#2937 <https://github.com/ros2/rclcpp/issues/2937>`_)
+* Fix: improve exception context for parameter_value_from (`#2917 <https://github.com/ros2/rclcpp/issues/2917>`_) (`#2920 <https://github.com/ros2/rclcpp/issues/2920>`_)
+* Contributors: mergify[bot]
+
+28.1.11 (2025-08-06)
+--------------------
+* Fix `start_type_description_service` param handling (`#2897 <https://github.com/ros2/rclcpp/issues/2897>`_) (`#2909 <https://github.com/ros2/rclcpp/issues/2909>`_)
+  * Fix `start_type_description_service` param handling
+  * Add test
+  * Demonstrate different exceptions depending on node options
+  * Same exact exception and `what()` message in both cases
+  * Uncrustify
+  ---------
+  (cherry picked from commit 4fb558ae7b2ce7ce9b546e103beaac4f99991e5c)
+  Co-authored-by: Patrick Roncagliolo <ronca.pat@gmail.com>
+* Add qos parameter for wait_for_message function (`#2903 <https://github.com/ros2/rclcpp/issues/2903>`_) (`#2906 <https://github.com/ros2/rclcpp/issues/2906>`_)
+  (cherry picked from commit 2fcef70ea78c2c3a45391e59aebb265c05113050)
+  Co-authored-by: Sriharsha Ghanta <ghanta_sriharsha@mymail.sutd.edu.sg>
+  Co-authored-by: Alejandro Hernandez Cordero <ahcorde@gmail.com>
+* [jazzy] Expose `typesupport_helpers` API needed for the Rosbag2 (backport `#2858 <https://github.com/ros2/rclcpp/issues/2858>`_) (`#2902 <https://github.com/ros2/rclcpp/issues/2902>`_)
+  * Expose `typesupport_helpers` API needed for the Rosbag2 (`#2858 <https://github.com/ros2/rclcpp/issues/2858>`_)
+  * Expose extract_type_identifier and get_typesupport_library_path API
+  - Rationale: We need to use this API in the Rosbag2
+  - Reference PR https://github.com/ros2/rosbag2/pull/2017 in the Rosbag2
+  * Use C++ style in doxygen documentation
+  ---------
+  (cherry picked from commit 448287b1090567181c809e59a3c72eed5ef4c69c)
+  # Conflicts:
+  #	rclcpp/include/rclcpp/typesupport_helpers.hpp
+  * Address merge conflicts
+  ---------
+  Co-authored-by: Michael Orlov <morlovmr@gmail.com>
+* Fujitatomoya/test append parameter override (`#2896 <https://github.com/ros2/rclcpp/issues/2896>`_) (`#2900 <https://github.com/ros2/rclcpp/issues/2900>`_)
+  (cherry picked from commit 84c6fb1cfc945521680a0e1fccf5b32237acbcc3)
+  Co-authored-by: Tomoya Fujita <Tomoya.Fujita@sony.com>
+* Add overload of `append_parameter_override` (`#2891 <https://github.com/ros2/rclcpp/issues/2891>`_) (`#2895 <https://github.com/ros2/rclcpp/issues/2895>`_)
+  (cherry picked from commit fa0cf2da31dfae7c83f185e3bf18cb8fd55f0f57)
+  Co-authored-by: Patrick Roncagliolo <ronca.pat@gmail.com>
+* Event exec timer fix for https://github.com/ros2/rclcpp/issues/2889 (`#2890 <https://github.com/ros2/rclcpp/issues/2890>`_)
+  Co-authored-by: Janosch Machowinski <J.Machowinski@cellumation.com>
+  Co-authored-by: Alejandro Hernández Cordero <ahcorde@gmail.com>
+* Shutdown deadlock fix jazzy (`#2887 <https://github.com/ros2/rclcpp/issues/2887>`_)
+  * fix: Don't deadlock if removing shutdown callbacks in a shutdown callback
+  * refactor: Made fix API compatible
+  ---------
+  Co-authored-by: Janosch Machowinski <J.Machowinski@cellumation.com>
+* fix test_publisher_with_system_default_qos. (`#2881 <https://github.com/ros2/rclcpp/issues/2881>`_) (`#2883 <https://github.com/ros2/rclcpp/issues/2883>`_)
+  (cherry picked from commit e6577c6792f76a74e303cc0c061e89abeb8cb1a6)
+  Co-authored-by: Tomoya Fujita <Tomoya.Fujita@sony.com>
+* Contributors: Janosch Machowinski, mergify[bot]
+
+28.1.10 (2025-06-23)
+--------------------
+* Fix for memory leaks in rclcpp::SerializedMessage (`#2861 <https://github.com/ros2/rclcpp/issues/2861>`_) (`#2864 <https://github.com/ros2/rclcpp/issues/2864>`_)
+* Added missing chrono includes (`#2854 <https://github.com/ros2/rclcpp/issues/2854>`_) (`#2856 <https://github.com/ros2/rclcpp/issues/2856>`_)
+* get_all_data_impl() does not handle null pointers properly, causing segmentation fault (backport `#2840 <https://github.com/ros2/rclcpp/issues/2840>`_) (`#2851 <https://github.com/ros2/rclcpp/issues/2851>`_)
+* QoSInitialization::from_rmw does not validate invalid history policy values, leading to silent failures (`#2841 <https://github.com/ros2/rclcpp/issues/2841>`_) (`#2845 <https://github.com/ros2/rclcpp/issues/2845>`_)
+* throws std::invalid_argument if ParameterEvent is NULL. (`#2814 <https://github.com/ros2/rclcpp/issues/2814>`_) (`#2825 <https://github.com/ros2/rclcpp/issues/2825>`_)
+* Merge pull request `#2821 <https://github.com/ros2/rclcpp/issues/2821>`_ from ros2/mergify/bp/jazzy/pr-2819
+* Fix race condition (`#2819 <https://github.com/ros2/rclcpp/issues/2819>`_)
+* Contributors: Michael Orlov, Pedro de Azeredo, mergify[bot]
+
+28.1.9 (2025-04-23)
+-------------------
+* remove redundant typesupport check in serialization module (`#2808 <https://github.com/ros2/rclcpp/issues/2808>`_) (`#2815 <https://github.com/ros2/rclcpp/issues/2815>`_)
+  (cherry picked from commit f78ed952b27acc63ef8022d78cb816c309a9ca3d)
+  Co-authored-by: Tanishq Chaudhary <tanishqchaudhary101010@gmail.com>
+* Contributors: mergify[bot]
+
 28.1.8 (2025-04-02)
 -------------------
 

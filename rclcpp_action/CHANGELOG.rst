@@ -3,6 +3,56 @@ Changelog for package rclcpp_action
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
+28.1.17 (2026-02-09)
+--------------------
+
+28.1.16 (2026-01-21)
+--------------------
+* Update exception documentation for goal cancellation in ServerGoalHandle (`#3019 <https://github.com/ros2/rclcpp/issues/3019>`_) (`#3023 <https://github.com/ros2/rclcpp/issues/3023>`_)
+  * Update exception documentation for goal cancellation
+  The documentation for the canceled function is misleading.
+  Previously, the description said:
+  1. "Only call this if the goal is canceling." and
+  2. "\throws rclcpp::exceptions::RCLError If the goal is in any state besides executing."
+  This is a contradiction.
+  Experimentally verified that if the goal is executing and this method is called, an error is thrown. This makes the second statement wrong => correct the statement in the documentation.
+  (cherry picked from commit 6397047d4795f594cf65dd360d70f5c9c3618700)
+  Co-authored-by: Andrei Costinescu <AndreiCostinescu@users.noreply.github.com>
+* Contributors: mergify[bot]
+
+28.1.15 (2025-12-23)
+--------------------
+
+28.1.14 (2025-11-18)
+--------------------
+* Fix REP url locations (`#2987 <https://github.com/ros2/rclcpp/issues/2987>`_) (`#2990 <https://github.com/ros2/rclcpp/issues/2990>`_)
+* Contributors: mergify[bot]
+
+28.1.13 (2025-10-21)
+--------------------
+* it misses the iterator second to lock the weakptr. (`#2958 <https://github.com/ros2/rclcpp/issues/2958>`_) (`#2960 <https://github.com/ros2/rclcpp/issues/2960>`_)
+* Contributors: mergify[bot]
+
+28.1.12 (2025-09-11)
+--------------------
+
+28.1.11 (2025-08-06)
+--------------------
+
+28.1.10 (2025-06-23)
+--------------------
+* Replace std::default_random_engine with std::mt19937 (humble) (`#2847 <https://github.com/ros2/rclcpp/issues/2847>`_) (`#2867 <https://github.com/ros2/rclcpp/issues/2867>`_)
+* Added missing chrono includes (`#2854 <https://github.com/ros2/rclcpp/issues/2854>`_) (`#2856 <https://github.com/ros2/rclcpp/issues/2856>`_)
+* Contributors: mergify[bot]
+
+28.1.9 (2025-04-23)
+-------------------
+* fix(rclcpp_action): Fix sleep of expire thread in case of canceled timer (`#2800 <https://github.com/ros2/rclcpp/issues/2800>`_)
+  This fixes a bug, that the expire action thread would not sleep as,
+  the sleep duration was not computed correctly.
+  Co-authored-by: Janosch Machowinski <J.Machowinski@cellumation.com>
+* Contributors: Janosch Machowinski
+
 28.1.8 (2025-04-02)
 -------------------
 * Harden rclcpp_action::convert(). (`#2786 <https://github.com/ros2/rclcpp/issues/2786>`_) (`#2789 <https://github.com/ros2/rclcpp/issues/2789>`_)
